@@ -1,0 +1,64 @@
+BROWSER HOST PROTOCOL — static ARM64 evidence
+Build: installed HeyClicky 1.1.3 (71). Full helper disassembly and indirect-symbol table retained in evidence/browser-host-arm64-*.txt. No helper execution performed.
+
+writeMessage at 0x100003c80 serializes a Swift dictionary with Foundation JSONSerialization, options 0. Failure returns without writing. For non-inline Data, length shifted right by 20 must be zero; therefore serialized payloads of 1048576 bytes or more are discarded. Inline Data is inherently smaller.
+
+The function stores the payload length as a 32-bit value at 0x100003dd0, builds a four-byte Data object from that memory at 0x100003e04–0x100003e10, and writes it to standard output before writing the JSON payload. ARM64 here is little-endian, so the prefix is a four-byte little-endian byte count. An output lock spans both writes (lock at 0x100003de0, unlock at 0x100003e88). This is static evidence of output framing, not a live interoperability test.
+
+readExactly at 0x100002b20 accumulates data until the requested byte count is reached. Empty input or a read error returns nil. Input framing and its maximum size still require the main loop to be traced independently.
+
+Remaining: startup origin/extension validation; local endpoint discovery and authentication; request and response schemas; polling, timeouts, reconnect behavior; browser extension implementation.
+
+INPUT LOOP — additional static verification
+The main loop accumulates a four-byte header (comparisons at 0x100001584, 0x1000015a0 and 0x1000015b4), loads its 32-bit length at 0x1000016b8, then checks unsigned (length - 1) against 0x100000 at 0x1000016c4–0x1000016cc. Thus accepted input payload lengths are 1 through 1048576 inclusive. Zero and larger lengths exit with status 1 through 0x100001428. This differs from the output bound: exactly 1 MiB is accepted on input but discarded on output.
+
+The body is read with readExactly; nil exits status 1. JSONSerialization parses with options 0 at 0x10000171c. Subsequent dictionary lookup uses the inline Swift string "type" (0x10000179c–0x1000017a8), followed by a string cast. Type comparisons visibly include "hello", "result", "stop", and "openApp". Their precise state transitions and malformed-JSON behavior remain to be traced; these names alone do not establish command effects.
+
+HTTP REQUEST CONSTRUCTION
+Resolved 275 indirect-symbol entries against the disassembly; evidence/browser-host-arm64-resolved-disassembly.txt preserves readable imported call names. This corrects misleading generic objdump labels such as _sysctl+address without changing instructions.
+
+request appends the inline filename connection.json to its base URL at 0x100002e54–0x100002e7c, reads it through Data(contentsOf:) at 0x100002e9c and parses JSON at 0x100002f40. Read failure returns nil. The base was previously identified by the BrowserBridge path string; its full initialization still needs tracing.
+
+URLRequest receives timeoutInterval 30.0 at 0x1000031f4–0x100003208 and HTTP method POST at 0x10000320c–0x10000321c. Authorization is constructed as "Bearer " plus a recovered string value and set at 0x100003280. Content-Type is set to application/json at 0x1000032c4. Token field provenance and endpoint field validation remain open; no live connection file or credential was read.
+
+The function calls ephemeralSessionConfiguration at 0x100003750 and setConnectionProxyDictionary at 0x10000379c. Proxy dictionary contents and response handling require further tracing. The 30-second request setting is not a measured end-to-end timeout or proof of polling cadence.
+
+CONNECTION FILE AND REQUEST CONTEXT
+request looks up port at 0x100002fc0 and requires a successful integer cast. Comparisons at 0x100003008–0x100003014 restrict it to 1..65535. It then looks up token at 0x100003020 and requires a successful string cast at 0x100003068. Failure paths return nil. The inspected path does not additionally test token length before URL construction.
+
+The URL is constructed from the literal http://127.0.0.1:, the decimal port and /mcp (append at 0x1000030e4–0x1000030f0), then parsed as a URL. Thus the helper's destination host is fixed to IPv4 loopback; the connection file supplies a port rather than an arbitrary remote URL. This is static behavior of this function, not a statement about redirects or other app networking.
+
+Before serialization, request inserts the session global under session (0x100003314–0x100003330) and the profile global under profile (0x10000338c–0x1000033a8) into the supplied dictionary. Native dictionary setValue overwrites any prior values for those keys. Additional fields and the outer RPC envelope remain under investigation.
+
+RPC ENVELOPE
+The HTTP body is JSON-RPC 2.0, a message format that names a method and its parameters. The request constructs jsonrpc:"2.0" at 0x1000034b8, a fresh UUID string for id at 0x100003500, method:"tools/call" at 0x100003524–0x100003554, and params with name from the function argument and arguments from the augmented dictionary at 0x10000358c–0x100003634.
+
+The augmented arguments additionally receive extension (0x1000033e8–0x10000340c, value supplied in function arguments) and browser (0x100003454–0x100003470, from browserBundleID global). Together with the previously traced session/profile, these fields identify the browser session to the app.
+
+On response parsing, the function reads result at 0x100003988 and casts it to a dictionary, then looks up structuredContent using the literal at 0x100006cc0. The success path is therefore a structured tool-result path, not a raw browser response body. Error-envelope handling, fallback behavior and final cast semantics remain to be traced before a complete interoperable implementation can be claimed.
+
+Recovered request shape (schematic, no real credentials):
+{"jsonrpc":"2.0","id":"<fresh UUID>","method":"tools/call","params":{"name":"<function argument>","arguments":{"<caller fields>":"...","session":"<global>","profile":"<global>","extension":"<argument>","browser":"<bundle ID>"}}}
+
+RESPONSE AND FAILURE SEMANTICS
+Completion handler 0x100005e00 accepts response data only when the response casts to HTTPURLResponse and statusCode equals exactly 200 (0x100005e48–0x100005e58). Other HTTP statuses do not populate ResponseBox. Every handler path signals the semaphore at 0x100005e90.
+
+request resumes the data task then calls the no-argument semaphore wait at 0x100003890 and finishTasksAndInvalidate at 0x100003898. There is no separate deadline on this semaphore wait; the URLRequest timeout is a distinct network setting.
+
+The response must parse as a JSON dictionary, contain a dictionary result, and have structuredContent castable to a dictionary. The final cast at 0x100003c4c returns nil on failure via csel at 0x100003c58. Missing structuredContent also returns nil. Malformed JSON and missing/wrong-type result converge on cleanup and nil paths. This helper function does not expose a separate typed JSON-RPC error result to its caller on those branches.
+
+These statements are instruction-derived, not tested with live requests. Caller retry behavior, origin validation and polling dispatch remain open.
+
+STARTUP ORIGIN CHECK
+The origin global is initialized from CommandLine.arguments[1], or an empty string if absent (0x100001200–0x100001238). For every configured ID the main loop builds chrome-extension:// + ID + / and performs string equality against that origin (0x10000138c–0x100001410). An empty ID list or no matching origin exits status 1 at 0x100001428. This is an exact string check, not a prefix match; it does not independently authenticate the process supplying argv.
+
+The installed resource ClickyBrowserExtensionID.txt contains bphdnlcghkpiaoiplkhfofpfboddahce. Startup collects IDs from two resource entries; parsing/normalization rules remain to be traced. The setup HTML advertises Chrome, Brave, Edge and Arc; that is packaged UI text rather than tested compatibility.
+
+POLL LOOP — corroborated decompilation
+Ghidra export evidence/ghidra-browser/analysis-20261110-022320-8384.c, function 0x100004848, corroborates an indefinite browser_poll request loop with initially empty caller arguments (request adds the previously documented context).
+
+When request returns nil, the helper emits {type:"ready",selected:false,app:false} and sleeps two seconds. The delay is independently visible as fmov d0,#2.0 at 0x100004aa8 before sleepForTimeInterval. This is failure backoff, not the success polling interval.
+
+On a dictionary result, it emits {type:"ready",selected:<Bool or false>,app:true}. If command exists and casts to a dictionary, that dictionary is sent to the extension through writeMessage. Successful iterations return directly to the next poll without an explicit sleep in this function; server response latency can therefore govern cadence. No live requests were used to determine this.
+
+Together with background.js's ready handling, a failed poll after selection causes the extension to stop current browser work. A successful response reports app reachability even when selected is false. Timing and server-side long-poll implementation remain unknown.

@@ -1,0 +1,47 @@
+HEYCLICKY INVESTIGATION INDEX
+All retained findings live in this folder. Overall work is incomplete.
+README.txt — target identity, verified live model, constraints and worker status.
+component-map.txt — package/native subsystem and Swift metadata map.
+browser-protocol.txt — native messaging helper and HTTP/RPC behavior.
+extension-architecture.txt — browser extension source analysis and offline probes.
+drawing-contract.txt — drawing engine/native adapter and offline probes.
+integration-contracts.txt — packaged connected-app tool contracts and source index.
+native-harness.txt — address-backed native launcher and runner correlation.
+local-tools.txt — local dispatch, path matching and timeout/image limits.
+routines.txt — scheduling validation and native-handoff gaps.
+web-tools.txt — page fetching, HTML conversion and search budgets.
+image-input.txt — image resizing, caching and request-budget behavior.
+note-engine.txt — streamed note edits, snapshots, saving and closing checks.
+provider-adapters.txt — Claude translation, streaming, usage and offline conversion checks.
+agent-loop.txt — model rounds, tool scheduling, budgets and compaction.
+device-helper.txt — cloud tunnel, proxy, device file tools and change-reporting limits.
+harness-architecture.txt — embedded Bun JavaScript, driver entry points and pending traces.
+model-configuration.txt — packaged worker model catalog.
+native-data-model.txt — partial compiled field ownership and domain structures.
+native-platform.txt — declarations, frameworks and privacy manifests.
+evidence/ — raw outputs, inventories, decoded metadata and probe results.
+probes/ — isolated Bun behavioral probes; no logged-in browser execution.
+scripts/ — reproducible extraction scripts.
+history/ — superseded notes; see README for current constraints.
+
+Main analysis finished on endgame. Verified final export and job log are local in evidence/ghidra-main/final.c and final-job.log; final-index.json and final-failures.json record coverage and 42 explicit failures. Browser helper output is local in evidence/ghidra-browser/. Semantic review and failure audit remain incomplete.
+
+onboarding.txt — tutorial stage declarations and unresolved flow/gating behavior.
+billing.txt — post-onboarding billing predicates and unresolved plan semantics.
+
+Scope update: user explicitly said billing can be ignored. Existing billing notes remain retained, but further billing investigation is excluded from remaining work and completion requirements.
+
+UX scope: user clarified only app UX matters. Start at ux-map.txt for current UX coverage and visual evidence; billing excluded.
+ux-onboarding.txt — user-facing tutorial instructions, controls and waiting states.
+ux-home-and-notch.txt — declared navigation, chat interaction and visible-state map; verification pending.
+ux-routines.txt — routine settings description expansion and remaining controls.
+ux-permissions.txt — permission steps, system-settings guidance and capture-test recovery.
+ux-permission-flow-summary.txt — concise permission UX reference with remaining verification gaps.
+
+ux-interaction-summary.txt — concise verified chat/keyboard behavior, with unresolved limits.
+
+ux-attachments.txt — picker behavior, attachment caps and overflow timing; preview/send handling pending.
+
+ux-history.txt — conversation empty/loading/failure presentations, retry gating, and earlier-message controls; static evidence and remaining gaps.
+
+ux-documents.txt — partial document-preview routing, loading presentation and open questions.

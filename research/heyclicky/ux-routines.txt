@@ -1,0 +1,286 @@
+ROUTINES SETTINGS UX — PARTIAL
+HomeSpaceRoutineSettingsRow identity is established by metadata descriptor 0x1035973f0, returned by FUN_100739a90, and source filename HomeSpaceRoutinesSettings.swift in the neighboring accessors. Declared state includes delete confirmation, just-started run, delete hover, description expansion and description hover.
+
+Description expansion: FUN_10073bc6c trims whitespace/newlines. FUN_10073bd54 returns true if the trimmed string has more than 140 Swift characters or contains a newline. FUN_10073f800 toggles expanded state only when that predicate is true. Label renderer FUN_10074020c selects Show more / Show less from expanded state and rotates chevron.down from 0 to 180 degrees when expanded. Exact collapsed text length/line limit and animation remain to trace.
+This Show more is a routines-description control, not evidence of chat full-reply expansion. The earlier chat investigation lead was explicitly corrected before reporting chat behavior.
+Evidence: evidence/ux/routines-expansion.json plus swift-type-fields.json descriptor 0x1035973f0. No routine created, run or edited.
+
+CONTROLS AND FEEDBACK
+Control renderer FUN_10074058c includes Run now, Delete this routine, Pause this routine, Turn this routine back on, Cancel and Delete. Accessible labels also incorporate the routine name. FUN_1007428c0 supplies the deletion prompt: Delete it? Its past runs stay in the chat. This is an explicit UX promise of preserving past conversation records; deletion backend behavior has not been exercised.
+Instructional copy FUN_100739570 invites users to tell HeyClicky what to do and when, and to add/change/pause/delete a routine conversationally. This complements the direct settings controls rather than establishing a form-based editor.
+Status renderer FUN_1007430b4 prioritizes paused-after-failures text (with count), then a paused flag, then Running now. Otherwise it chooses Retrying with a formatted time, Next with a formatted time, or Last run failed from routine state. It composes these with a schedule descriptor and optional count text. Field offsets and exact time formatting remain to map. Do not infer retry counts, backoff policy or scheduling guarantees from these labels.
+Evidence: evidence/ux/routines-control-copy.json and routines-controls-and-status.json. No routines were modified or run.
+
+BUTTON ACTIONS
+Run now callback 100749738 -> 100743ed8 rechecks FUN_10073be50 and does nothing when it is true. Otherwise it passes routine identity to manager FUN_1020ae5a0; only a true result sets local state through FUN_10073a7cc(1). The UI uses the same predicate to change its label and reduce opacity to 0.55 (normal 1.0). Thus repeated action prevention exists in the handler, not just visual dimming. Predicate combines local state getter FUN_10073a764 with time-sensitive routine helper FUN_101e16f38; exact running/staleness semantics still need confirmation.
+Cancel callback 10074c634 -> 100743dcc clears confirmation through FUN_10073a118(0). Delete callback 10074cad8 -> 100743e08 clears confirmation first, then delegates routine identity with source settings to FUN_1020aec78. This establishes confirmation dismissal before manager handling, not backend success or error presentation. Those outcomes remain open.
+Evidence: routines-action-wrappers.json and routines-action-handlers.json in evidence/ux.
+
+DELETE OUTCOME AND LOCAL PERSISTENCE
+FUN_1020aec78 removes matching routine entries from the mutable collection, calls FUN_1020b2414, and checks whether the remaining collection is empty. It does not await a service response in this function. Earlier references to unknown backend deletion should not be read as evidence that a remote deletion exists.
+FUN_1020b2414 rebuilds ClickyJobStore.jobIDsWithRoutines from remaining routine references, updates another active-routine flag, JSON-encodes the routine collection and stores resulting Data in standard NSUserDefaults. No job/chat history deletion call is visible in these two functions, supporting (but not fully proving across all side effects) the UI promise that past runs stay in chat.
+If no routines remain, FUN_1020b1b98 invalidates and clears clickyRoutinesPollTimer and releases additional routine observer state. This is local scheduling cleanup, not a visible success toast. The inspected delete handler has diagnostic logging but no explicit user-facing success/error message. JSON encoding failure skips the defaults write in the shown helper; no surfaced error is visible here.
+Run-now manager FUN_1020ae5a0 returns dispatch result from FUN_1020b4d44 and records that result with dispatched metadata. It does not itself prove completion of a run; the earlier UI local acknowledgement means accepted dispatch.
+Evidence: evidence/ux/routines-manager-actions.json and routines-delete-followups.json. No preferences or routines were changed by this investigation.
+
+
+RUN-NOW GUARD — RUN TIMESTAMPS (2026-11-10)
+10073be50's shared guard is true immediately while the row's just-started state
+is true. Otherwise it passes the current Date and a 7200-second threshold to
+101e16f38. This helper requires lastRunStartedAt to be present and
+lastRunFinishedAt to be absent, then compares a Date interval with the threshold
+using strict less-than. The intended running-staleness check is strongly
+supported, but Date receiver direction remains to verify at instruction level
+before stating exact boundary behavior for malformed/future timestamps.
+
+Field identity is verified: ClickyRoutine descriptor 1035acd8c declares 21
+fields, its metadata field-offset vector starts at byte 16, and indices 10/11
+correspond to lastRunStartedAt/lastRunFinishedAt. Thus the helper's metadata
+accesses +0x38/+0x3c map to those fields, not nextRunAt/runCount. This prevents
+mistaking the two-hour threshold for the routine's schedule interval or retry
+backoff. It is used in the Run now availability guard, not a proven forced stop.
+
+Evidence: evidence/ux/routines-run-availability.json and
+routine-running-field-layout.json. The row's local-state reset and visible
+refresh cadence remain open. No routine was created or executed.
+
+
+RUN-NOW ACKNOWLEDGEMENT RESET AND DATE DIRECTION (2026-11-10)
+Row body 10073bf3c attaches SwiftUI onChange to routine.lastRunStartedAt
+(metadata +0x38). Its callback 10073f16c -> 10073dc2c invokes
+10073a7cc(false), clearing the local just-started state. The prior true write
+occurs only after accepted dispatch. This supplies a model-change reset, not a
+fixed local timer. The timestamp-based running guard can continue blocking the
+action after the acknowledgement flag clears. A failed dispatch never sets
+that local flag in the traced button handler.
+
+ARM64 now resolves the Date-direction uncertainty above: 101e16f48 stores the
+incoming current-date pointer at frame -0xa8; 101e17338 loads that as Swift self
+(x20), while x0 receives the copied lastRunStartedAt value. Therefore the
+comparison is currentDate.timeIntervalSince(lastRunStartedAt) < 7200. A start
+with no finish ceases qualifying at exactly two hours; a future start's negative
+interval also qualifies. This is only a running-state predicate, not a job kill,
+automatic refresh guarantee, or proof of whether a concurrent run is actually
+still executing.
+
+Evidence: evidence/ux/routine-run-acknowledgement-reset.json,
+routine-run-reset-binding.json, routine-running-date-arm64.txt and the prior
+routine field-layout evidence. No app state was changed.
+
+
+PAUSE / RESUME CONTROL AND NEXT RUN (2026-11-10)
+The Settings toggle binding is enabled = !routine.isPaused: getter
+100744468 reads metadata field +0x2c and inverts it. Setter 1007444e0 inverts
+the requested enabled value and calls manager 1020af6b8 with source "settings".
+The row binds these through 10074a37c / 10074a844. This is a direct toggle,
+not the separate delete confirmation flow.
+
+Manager 1020af6b8 passes a mutation closure to 1020b3144 then calls
+1020b108c. Closure 1020cfde4 -> 1020b8024 writes isPaused, clears pendingRetryAt
+(metadata +0x48) for either direction, and on resume additionally zeroes
+consecutiveFailedRunCount (+0x50) and sets nextRunAt (+0x30) to Date()+60 seconds
+(double 404e000000000000). Pausing does not change nextRunAt in this closure.
+No active-run cancellation call occurs in this mutation; do not equate pausing
+future scheduling with stopping current work. Scheduler/persistence followups
+still need tracing before promising an actual execution exactly one minute later.
+
+Evidence: evidence/ux/routine-pause-binding.json, routine-pause-accessors.json,
+routine-pause-manager.json, routine-pause-mutation-wrapper.json,
+routine-pause-mutation.json; ClickyRoutine metadata in swift-type-fields.json.
+Offline only; no routine settings were changed.
+
+
+SAVE AND SCHEDULER REFRESH AFTER PAUSE/RESUME (2026-11-10)
+1020b3144 finds the routine by identity, copies it, applies the supplied mutation,
+writes it back through the manager's mutable collection, then calls persistence
+helper 1020b2414. If the identity is absent it makes no mutation and shows no
+error in this function. The previously traced persistence helper JSON-encodes
+and stores locally; encoding failure has no visible error here.
+
+Pause/resume next calls scheduler refresh 1020b108c. Empty routine collections
+invoke cleanup. Nonempty collections install missing network/full-wake/workspace
+wake observers and create a repeating NSTimer with interval 30 seconds when no
+timer exists. Existing timers are retained. The wake notification is explicitly
+NSWorkspaceDidWakeNotification. The timer callback 1020cff5c -> 1020bc7a8
+schedules an asynchronous main-actor task, whose eventual dispatch remains to
+trace. Refresh also immediately calls 1020bcb3c with a current Date.
+
+1020bcb3c filters candidates, then distinguishes offline, dark-wake and a wake
+hold before invoking dispatch 1020b4d44 for candidate identities. Explicit false
+network availability takes the offline branch; absent/unknown network state is
+not treated as false by that condition. Full eligibility/retry calculations
+remain unresolved. Initial timer creation also calls 1020bb920, which sets
+clickyRoutinesResumeNotBefore using a 180-second interval and mutates a filtered
+set; do not label this a universal three-minute delay without tracing consumers.
+
+UX consequence: resume's saved nextRunAt=now+60 seconds is a scheduling target,
+not a guaranteed start at that instant. Paused routines are not automatically
+removed from the collection, so nonempty collection alone does not prove any
+runnable routine exists. No stop-current-job operation is visible in the traced
+pause/save/refresh entry chain; downstream dispatch/reconciliation remains open.
+
+Evidence: evidence/ux/routine-save-and-scheduler-refresh.json,
+routine-scheduler-poll-entry.json, routine-poll-timer-callback.json. Static only;
+no timers, observers or preferences were created by this investigation.
+
+
+SCHEDULED CANDIDATES AND DISPATCH GATES (2026-11-10)
+Candidate predicate 1020bdb10 excludes isPaused, then compares nextRunAt <= the
+supplied current Date through 101e577bc. It does not itself inspect the last-run
+start/finish timestamps. Therefore the two-hour UI running guard must not be
+presented as the scheduler's complete overlap-prevention rule.
+
+Dispatch 1020b4d44 first resolves the routine; missing identity returns false.
+It checks the shared authentication gate 101f5b83c and defers through 1020c50c4
+on failure. Explicit offline state also returns false after a separate mutation.
+When the routine has no jobID, it resolves its clickySlug using 101dfefb0; a
+missing target invokes 1020c8898, setting isPaused=true, and returns false.
+That establishes an automatic pause on missing target in this branch; exact
+visible explanation is not established by its diagnostic log. With jobID present,
+a separate helper 1020c517c handles dispatch and remains to inspect.
+
+The no-jobID branch also calls task-collection predicate 1020aeb30 and defers
+when true. Its detailed task matching/status semantics remain unresolved; do not
+claim universal overlap prevention from the UI guard or function name alone.
+Evidence: evidence/ux/routine-due-predicate.json, routine-dispatch-guards.json,
+routine-dispatch-deferral.json. No routine or logged-in account was exercised.
+
+
+DISPATCH DEFERRAL VS OFFLINE RETRY (2026-11-10)
+The generic cannot-start helper 1020c50c4 mutates the routine through
+1020d3924 -> 1020ca444, updating nextRunAt with a 60-second Date addition.
+It does not set isPaused or pendingRetryAt in that mutation. This path is used
+by the authentication/busy gates described above, not evidence of an executed
+job failing. The exact current-date receiver is retained in ARM64 for followup.
+
+The explicit offline dispatch branch uses 1020d0e10 -> 1020c5124. That calls
+101e18180, which adds 300 seconds to its supplied date, writes nextRunAt, and
+copies that value to pendingRetryAt. It then calls 101e182ec, which writes
+waitingForNetworkSince only if absent, preserving an existing start time across
+subsequent attempts. These helpers do not increment the failure count or set
+lastRunFailed. Scheduler/network callbacks may retry earlier or later; a fixed
+five-minute execution guarantee is not established.
+
+Overlap predicate 1020c4a84 matches a task's starterAgentSlug or a secondary
+identity returned by 101f00f5c, then requires status case 0 or 1 via 101f00ff0.
+The status getter keypaths and secondary identity remain to map before asserting
+precise labels or scope of overlap prevention.
+
+Evidence: evidence/ux/routine-deferral-callbacks.json,
+routine-deferral-mutations.json, routine-offline-wait-state.json,
+routine-deferral-date-arm64.txt. Static only; no scheduled jobs were run.
+
+
+NETWORK FAILURE COPY — REACHABILITY AND LIMITS (2026-11-10)
+Formatter 101e18b44 distinguishes two messages: offline says the run did not
+start and will retry when internet returns; the other says HeyClicky's servers
+could not be reached and it will retry in a few minutes. Direct caller
+102163314 selects this formatter in an error branch, using explicit offline
+state or error classifier 1021746ac. The resulting text flows into shared error
+presentation helper 101c6dcd4 along with task identity/error data. Exact displayed
+surface and error-branch eligibility still need tracing; these strings should
+not be described as unconditional toasts for every offline routine.
+
+Separate formatter 101e18a2c names the routine and says it was due but has not
+started because internet is unavailable. A whole-final.c direct-call scan found
+no caller for it. Retain this as candidate copy, not verified visible behavior.
+Model predicate 101e186d0 returns true only when not paused and
+waitingForNetworkSince is present, supporting a distinct waiting state.
+
+Evidence: evidence/ux/routine-failure-model-helpers.json and
+routine-network-message-callers.json. Repeated executed-job failure threshold,
+retry backoff and automatic-pause messaging remain unresolved. No network call
+or app execution was performed.
+
+
+FAILURE-PAUSE STATUS THRESHOLD (2026-11-10)
+Visible status builder 1007430b4 first checks 101e173c0. That predicate is true
+only when isPaused=true and consecutiveFailedRunCount (nil treated as zero)
+is greater than two. It then renders "Paused after [count] failed runs" before
+ordinary paused/running/next/retry branches. Thus the failure-pause label requires
+at least three counted consecutive failures AND an existing paused flag. This
+is a display threshold, not yet proof that the third failure sets the flag.
+The same predicate influences status text styling in 1007428c0; exact colors
+remain unresolved. Resume's verified count reset removes this display condition.
+
+The direct setter 101e17f58 has no direct callers in retained final.c; writes
+may be inlined. The counter-consumer search and caller map are retained to
+continue into the mutation path without treating a getter/label as enforcement.
+Evidence: evidence/ux/routine-failure-counter-consumers.json,
+routine-failure-counter-writers.json (empty bounded direct-call result),
+routine-failure-count-caller-map.json. No live routine was run.
+
+
+AUTOMATIC PAUSE — COMPLETION MUTATION CONFIRMED (2026-11-10)
+Completion callback 1020d4f20 -> 1020cd8c8 invokes model mutation 101e1990c,
+which writes lastRunFinishedAt and lastRunFailed, stores a trimmed nonempty
+summary capped at 500 Swift characters (empty becomes absent), and clears the
+previous pendingRetryAt.
+
+When failed=false it resets consecutiveFailedRunCount to present zero. When
+failed=true, retry eligibility is true, and the routine is not already paused,
+it increments that counter only if the separate count-eligibility flag is true.
+Nil count begins at zero. New count >=3 sets isPaused=true and returns true
+before scheduling a retry. Otherwise this eligible-retry branch calls
+101e18180, establishing the previously traced five-minute nextRunAt and
+pendingRetryAt update. A counted third failure therefore automatically pauses;
+not every failure category is counted. Already-paused routines do not enter that
+increment/retry branch. The caller's category-to-flag mapping remains open.
+
+1020cd8c8 computes retry eligibility as its param6 AND NOT param7, and counting
+eligibility as NOT param8 AND NOT param7. It can also clamp nextRunAt to a later
+optional date. These parameter positions are evidence, not user-facing category
+names. For failure with retry eligibility false, 101e1990c instead takes the
+max of existing nextRunAt and another schedule helper; that helper remains open.
+
+This resolves the earlier enforcement gap while retaining the distinction
+between three eligible counted failures and three arbitrary errors. Resume's
+verified counter reset permits a fresh sequence. Exact chat/notification feedback
+for the pause still needs tracing.
+Evidence: evidence/ux/routine-completion-mutation-entry.json,
+routine-completion-mutation.json, routine-failure-counter-consumers.json
+(function 101e1990c), and prior routine-offline-wait-state.json.
+No routine, preference, account or target network activity was performed.
+
+
+FAILURE-PAUSE FEEDBACK AND INTERRUPTED-RUN RETRY (2026-11-10)
+Completion 1020cad58 checks the mutation's returned did-pause byte and invokes
+1020c3288 when true. Full inspection of that helper shows routine lookup,
+repeated_failures analytics and an OS diagnostic log, then return. It contains
+no explicit chat insertion, notification or toast call. This bounded finding
+does not exclude observers or the ordinary task error response. The Settings
+"Paused after [count] failed runs" status remains confirmed visible feedback;
+do not invent a separate automatic-pause alert.
+
+For retry eligibility, 1020cad58 distinguishes interrupted via param5 (its
+outcome diagnostic labels that value "interrupted"). With another task guard
+101f01360 false, non-interrupted outcomes set eligibility true; interrupted
+outcomes require 101e1a1c0 to match the supplied summary exactly against one of:
+- Codex disconnected while background agent tasks were still running.
+- HeyClicky stopped before the agent task finished.
+Absent or different summary returns false. Thus this path does not automatically
+retry every interruption. Further suppression flags still apply in 1020cd8c8,
+and the task guard's semantic identity remains unresolved.
+
+Evidence: routine-failure-counter-consumers.json functions 1020cad58 and
+1020c3288; evidence/ux/routine-interruption-retry-classifier.json. No live task,
+message delivery or account request occurred.
+
+
+RETRY SUPPRESSION GUARD — FIELD IDENTITY STILL OPEN (2026-11-10)
+101f01360 reads a Published Bool through keypaths 1032309c8/1032309f0.
+The storage keypath's relative reference at +28 resolves to offset slot
+1038659d8. Its paired setter is 101f024e4, established through computed-keypath
+setter thunk 101f2ef74 -> 101f1feb4. Field semantic identity is not yet verified.
+
+Writer scan shows true in 101f052b4 and a computer-use handling branch of
+1002703f4, false in reset 101effe1c and outcome handlers 101f056d8,
+101f08828, 101f08e84, plus a conditional true in 101f32980. Therefore it must
+not be labeled "user stopped" merely because it suppresses routine retry.
+This corrects that investigation hypothesis, without changing the confirmed
+retry gating. Next evidence needed is offset-slot-to-field mapping or constructor
+storage linkage, not another guess from outcomes.
+
+Evidence: evidence/ux/routine-retry-task-guard.json,
+routine-retry-guard-keypath.json, routine-retry-guard-accessors.json,
+routine-retry-guard-writers.json. No account requests or app execution.

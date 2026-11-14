@@ -1,0 +1,89 @@
+HEYCLICKY DRAWING AND ANNOTATION UX — PARTIAL
+Scope: app UX, billing excluded. Offline retained evidence for 1.1.3 build 71; no cursor movement, screen capture, app launch or target request performed.
+
+CURRENT USER FLOW SUMMARY
+- The tutorial teaches holding the voice shortcut, circling screen content and asking about it. The input path starts annotation watching only after its voice/drawing gates pass.
+- Ink begins after sufficient cursor movement. Points and sustained pauses are retained as context. A stationary hold does not create a stroke.
+- Ordinary release hides the marks, copies a description into pending voice context, then clears the original strokes in the traced preparation path.
+- A voice hold shorter than 0.5 seconds can take a cancellation path that clears the marks.
+- Escape during a recognized voice hold cancels it, clears marks and suppresses the following release, preventing that release from submitting the cancelled attempt.
+
+This covers static lifecycle and control behavior, not a live usability test. Remaining material gaps include exact physical shortcut routing, drawing setting UI, fade rendering, cross-display coordinates, generated-drawing controls, accessibility, and successful answer delivery. Later evidence sections supersede earlier specific unresolved notes.
+
+USER DRAWING VERSUS ASSISTANT DRAWING
+Existing drawing-contract.txt primarily covers the assistant-generated drawing engine and bridge. User pointing marks have a separate ScreenAnnotationManager: Swift descriptor 1035b8484, accessor 102f4f3c0, static metadata 103880c80. Keep these paths separate when reconstructing the experience. The previously recovered tutorial asks users to hold their shortcut, circle screen content with the cursor and ask about it (ux-onboarding.txt, functions 102a53020/102a60a78); the live gesture linkage is still to trace.
+
+WHAT USER MARKS CAN COMMUNICATE
+Nearby annotation code 102f47104 constructs descriptions for circling an area, drawing a line from one area toward another, drawing a line across an area, and scribbling over an area. Helper 102f48d54 supplies spatial descriptions including right/center and bottom/middle. Composer 102f40e38 includes “While asking,” and “Treat this as exactly what they are pointing at.” These are generated contextual descriptions, not established visible UI labels or proof of gesture-recognition accuracy. Their final submission caller and shape-classification rules remain unresolved.
+
+The component metadata declares strokes, strokeColor, isWatchingCursor, holdStartCursorLocation, hasStartedStrokeThisHold, dwellAnchorLocation/time, pointerEventSubscription, inkFadeTimer, per-display overlays, movement/point-spacing thresholds and fade duration. Names identify investigation seeds only; do not infer actual thresholds, fade times, cross-display behavior or activation rules from them. A search for symbolic movementActivationThreshold references in retained final.c found none; native code may use direct offsets.
+
+EVIDENCE AND NEXT STEPS
+evidence/ux/annotation-manager-type.json records the descriptor/accessor link. annotation-manager-accessor-callers.json retains 10245c30c, a consumer which invokes 102f42af4; despite the exploratory filename annotation-manager-init.json, that latter function is NOT established as an initializer and must not be described as one. annotation-nearby-copy.json retains the bounded annotation-code scan with full functions. annotation-manager-construction.json and annotation-movement-threshold.json are empty bounded search results, not absence claims.
+
+Next: trace hold activation and pointer subscription, release/submission and Escape cleanup, then visible ink lifecycle and accessibility. Remaining generated-drawing controls and layouts also stay in scope.
+
+ANNOTATION LIFECYCLE — START, STOP/HIDE, AND CLEAR ARE DISTINCT
+Recovered the class field-offset vector from descriptor 1035b8484 and metadata 103880c80: 19 fields, vector word index 10. This resolves direct offsets used by native functions, including strokes +0x10, isWatchingCursor +0x20, pointerEventSubscription +0x78, inkFadeTimer +0x80 and overlaysByDisplayID +0x90. This is stronger than guessing from metadata field order alone.
+
+Start helper 102f41dec first calls full clear 102f41998, sets stroke color and active fade duration, enables cursor watching, records the current mouse location as hold start, resets per-hold state, and subscribes to pointer updates with callback 102f48688. Exact polling interval and activation threshold values remain unresolved.
+
+Stop helper 102f420e8 first invokes finalization helper 102f43d34 with system uptime, disables cursor watching, clears hold/sample/dwell state, removes the pointer subscription, invalidates the ink timer, and orders out overlay windows. It does NOT remove the strokes array. Full clear 102f41998 calls stop, then empties strokes and the overlay dictionary. Starting a new watch therefore clears old marks; stopping alone hides them while retaining data. This distinction supports collecting annotation context after the visible stroke is hidden, but final submission timing remains to trace.
+
+Integration references connect these helpers to CompanionManager.screenAnnotationManager. Function 101fe8df8 calls start, stop and full clear in different branches; Escape-related helpers 1021e1784 and 1021e2090 call full clear. Exact input predicates are still unresolved, so not every key release or Escape can yet be assigned an unconditional outcome.
+
+Context composer 102f40e38 has actual callers 1018c16bc, 10231f034 and 102320084. The latter two read the manager, obtain contextual description and additional annotation data, and later clear it. Their full request roles remain to establish; this advances the earlier caller gap without treating generated text as visible UI copy.
+
+Evidence: evidence/ux/annotation-field-offsets.json, annotation-lifecycle-operations.json, annotation-manager-integration.json and annotation-description-callers.json. No overlays were created or cursor events sent.
+
+CURSOR MOVEMENT ACTIVATES A STROKE; PAUSES ARE RETAINED AS CONTEXT
+The pointer subscription callback 102f48688 -> 102f43350 forwards sampled coordinates plus system uptime into 102f43464. That handler first requires isWatchingCursor. Before a stroke has started, it computes straight-line distance from holdStartCursorLocation and compares it with movementActivationThreshold (+0xa0). Only when that threshold is reached does it create the first stroke, using both the original hold position and current position as initial points, set hasStartedStrokeThisHold, initialize sample/dwell state, and invoke rendering/timer helpers. Thus merely holding the shortcut with an unmoved pointer does not create a stroke through this handler. Exact distance and display-unit interpretation remain unresolved.
+
+After activation, the handler updates dwell tracking, conditionally appends sample coordinates/timestamps to the latest stroke, and requests a render update. Point-spacing predicate 102f4872c -> 102f44b20 remains to decode. Do not equate pointer sampling frequency with the number of retained stroke points.
+
+Dwell helper 102f44918 keeps an anchor and start time. When the pointer moves beyond dwellRadius (+0xc0), it calls 102f43d34 to finalize the previous pause and starts a new anchor. Finalization requires a nonempty strokes array and elapsed time at least dwellMinimumDuration (+0xc8); it appends the anchor coordinates and elapsed duration to the latest stroke. The stop operation also calls this finalizer before clearing dwell state. Consequently pauses during an established stroke can be retained with the drawing; this does not yet establish visible pause markers or their downstream interpretation. A stationary hold before stroke activation does not enter this dwell-recording path.
+
+Evidence: evidence/ux/annotation-pointer-processing.json, annotation-dwell-and-spacing.json and annotation-field-offsets.json. A bounded constructor-pattern search in 102f39000..102f50000 did not establish default threshold values (annotation-configuration-candidates.json); no numerical sensitivity claim is made. No cursor event was executed.
+
+ANNOTATION DEFAULTS AND DISPLAY OVERLAYS
+Initializer 102f49f50 now supplies numeric defaults that match the recovered class offset vector: cursorPollInterval = 1/60 second; movementActivationThreshold = 8; minimumPointSpacing = 1.5; highlighterLineWidth = 8; strokeFadeDurationSeconds and initial activeStrokeFadeDurationSeconds = 1 second; dwellRadius = 12; dwellMinimumDuration = 0.35 second. Distance/width values are in the coordinate space consumed by the drawing code, not established physical display pixels. These are initializer defaults, not live preference measurements.
+
+The start helper subscribes with reciprocal cursorPollInterval, indicating a requested 60-Hz update rate rather than guaranteed delivery frequency. Predicate 102f44b20 confirms that subsequent points are retained when distance from the last sampled point reaches minimumPointSpacing, explaining the 1.5-unit default's actual use. Movement activation and dwell comparisons were traced previously.
+
+Overlay helper 102f44004 enumerates NSScreen.screens, skips screens with an unusable zero display identifier, and creates a missing overlay using each screen's frame, then orders it front and stores it by display ID. This establishes per-display overlay creation. It does not yet verify clipping or coordinate conversion when a stroke crosses monitors.
+
+Fade/render update 102f44374 passes stroke data to overlays and maintains an ink timer through 102f44fe8. That helper only maintains the timer while cursor watching is active and the supplied fade predicate allows it; it schedules the first fire at cursorPollInterval * 1.5 and uses cursorPollInterval for repeated updates. Otherwise it invalidates/clears the timer. Exact opacity calculation and visual fade curve remain unresolved, so the one-second fade configuration must not be presented as measured fade behavior.
+
+Evidence: evidence/ux/annotation-defaults.json, annotation-fade-and-render.json, annotation-fade-timer.json and annotation-field-offsets.json. This supersedes the earlier unresolved default-value note; no display or pointer operation was executed.
+
+VOICE-RELATED ACTIVATION GATES AND SAVED DRAWING PREFERENCE
+Manager input handler 101fe8df8's case-1 branch invokes voice-related start helper 1022d175c, then starts annotation watching through 102f41dec only when that helper succeeds and boolean getter 101fc0488 is true. The later release-related branch checks suppressPushToTalkReleaseAfterEscape, cancels pendingKeyboardShortcutStartTask, and calls annotation stop 102f420e8 unless tutorial handler 10224637c consumes the transition. A separate short-duration branch below 0.5 seconds can full-clear annotations before returning; its complete gates still require tracing. These are conditional routes, not proof that every voice press starts drawing or every release submits.
+
+The Published getter/setter pair 101fc0488 / 101fc05c0 shares keypaths 103236200/103236228. Nearby projected-value accessors explicitly name _isScreenHighlightDrawingEnabled. Initial-value helper 101fc0650 reads preference key screenHighlightDrawingDevelopmentPreviewEnabled, recovered through 101fa4610 -> 101fa45d0. It returns true when the preference is absent, otherwise the stored boolean. This establishes that preference's fallback default; exact keypath-to-field correspondence and constructor invocation still need closure before asserting it proves all installations start with the drawing gate enabled. No user preferences were read or changed.
+
+Evidence: evidence/ux/annotation-manager-integration.json (101fe8df8), annotation-activation-gates.json, annotation-activation-property.json and annotation-preference-key.json. The key's internal development-preview wording is not a recovered settings label.
+
+SHORT VOICE HOLD — CANCELS AND CLEARS ANNOTATIONS
+The short-duration branch in 101fe8df8 is now linked to cancellation helpers. After the release-related gates, it compares current time with pushToTalkPressStartTime. With a retained start timestamp and duration below 0.5 seconds, it cancels pendingKeyboardShortcutStartTask, invokes 1022d1a4c, resets the recording-start-chime flag, full-clears annotations, calls overlay cleanup, and returns before the ordinary release path. The threshold is a voice-input gesture rule, separate from dictation's 0.08/0.4-second handling.
+
+1022d1a4c invokes 10169be24 (diagnostic “the press was cancelled”), cancels related pending work through 101685be0, and invokes session cleanup 1022e1d3c when a session exists. That helper cancels tasks and uses reasons “short-tap PTT cancel” / “short-tap cancel mid-prewarm” when closing applicable work. These strings are diagnostics, not visible error messages. This supports interpreting the short-hold branch as cancellation rather than normal submission. It does not prove that no earlier streamed audio reached a service.
+
+For the longer/ordinary release branch, after tutorial handling it stops/hides annotation watching while retaining strokes, then calls 1022d1b4c. That helper first offers processing to 1018c0bc0 and otherwise invokes 1022d947c. The request completion and exact context payload remain to trace. Missing timestamp and other earlier guards mean the 0.5-second comparison is not a universal rule for every input source.
+
+Evidence: evidence/ux/annotation-manager-integration.json (101fe8df8), voice-short-press-and-release.json and voice-short-press-cleanup.json. No gesture, audio or target request executed.
+
+ORDINARY RELEASE — COPIES ANNOTATION CONTEXT BEFORE CLEARING
+The eligible release handler 1022d1b4c can route to 1018c0bc0, which retains screenAnnotationManager in an asynchronous preparation task. Descriptor 103213d08 -> 1018d2bf8 -> 1018c1088 -> 1018c1160 (optional delay via 1018c150c/1018c15b8) -> completion 1018c1654 -> 1018c16bc closes the previously unlinked task-to-context chain. A second task is started through 103213d18 to continue the voice turn; that continuation remains to trace.
+
+1018c16bc obtains annotation elements using 102f40d0c and the textual gesture description using 102f40e38. With a nonempty description it obtains additional annotation data from 102f41648 and writes the description/data pair into OneBrainVoice.pendingHighlight. It also passes elements and description/data to 1022c450c, which updates RealtimeVoiceController.lastSubmittedAnnotationGesture and lastSubmittedAnnotationElements. With no usable description it supplies an empty element array and empty context to that latter helper. It then full-clears the annotation manager.
+
+This establishes the important UX lifecycle: marks are hidden on ordinary release, their meaning is copied into pending voice context, then the original strokes/overlays are cleared. Clearing does not imply the request lost its drawing context. Exact outbound serialization, additional-data format and service interpretation are still unresolved; this does not prove a successful answer or network delivery.
+
+Evidence: evidence/ux/annotation-voice-context-handoff.json, annotation-description-callers.json (1018c16bc), annotation-manager-integration.json (1018c0bc0) and voice-short-press-and-release.json. All code reads were offline.
+
+ESCAPE DURING A VOICE HOLD — CANCEL AND SUPPRESS THE FOLLOWING RELEASE
+Escape helper 1021e1784 checks whether pushToTalkPressStartTime is present. When present, it sets suppressPushToTalkReleaseAfterEscape, clears the start timestamp, cancels/clears pendingKeyboardShortcutStartTask, invokes the previously traced voice cancellation helper 1022d1a4c, resets the voice/presenter state and start-chime flag, full-clears screen annotations, and performs overlay cleanup. It returns handled. With no timestamp it returns unhandled. Earlier global Escape priorities still apply.
+
+The input handler 101fe8df8's release-related branch reads suppressPushToTalkReleaseAfterEscape before ordinary release processing. When true, it clears the flag and returns immediately. This closes the accidental-submit question for this path: Escape cancels the held attempt, and the following release does not take the normal annotation-context/submission route. This does not retract already transmitted audio or undo actions completed before cancellation.
+
+Evidence: evidence/ux/annotation-manager-integration.json (1021e1784 and 101fe8df8), voice-short-press-and-release.json and voice-short-press-cleanup.json. No keyboard input was performed.

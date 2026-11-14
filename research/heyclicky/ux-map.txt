@@ -1,0 +1,137 @@
+LATEST KEYBOARD COVERAGE: Escape event-tap registration, 40 ms main-thread
+handling wait, pass-through behavior, and exclusion of app-tagged keyboard input
+are statically traced in ux-home-and-notch.txt. Live event-tap installation and
+responsiveness remain unverified. This supersedes the older code-linkage gap.
+
+CURRENT SCOPE: App UX only; billing excluded. Offline retained-artifact analysis.
+Upload approval timeout is now traced: 120 seconds, unanswered result, with
+action cleanup cancelling the timer. Details/evidence: ux-attachments.txt.
+Visual appearance and live behavior remain unverified.
+
+CURRENT AGENTS SETTINGS COVERAGE — OFFLINE VERIFIED
+See ux-agent-settings.txt and ux-permissions.txt for supporting function evidence and precise limits.
+- Workspace: single-folder picker, saved custom override, reset control, invalid-folder display fallback and shared resolver fallback; resolver caches matching preferences for five seconds. Per-thread precedence and exact default pathname remain open.
+- Announcements: voice and cursor settings default enabled when no saved value applies; runtime readers use the same persisted keys. Quiet-context gates and demo exceptions exist. Full end-to-end delivery, screen-sharing detection and queued-work presentation remain open.
+- File uploads: automatic approval defaults disabled; visible explanatory copy and binding verified. Enforcement of the stated file exclusions remains open.
+- Permission review: visible list contains granted entries plus Files & Folders first; it does not show all denied/missing permissions. Files & Folders intentionally has unknown status and no badge. A view task loads data and automation status with an in-flight guard; an explicit refresh-on-return-from-System-Settings trigger remains unverified.
+- Automation inspection: fourteen declared targets; concurrent checks return to declaration order. A requested 1.5-second timeout yields unknown and omission from the visible list. Remembered grants persist; a late probe can update that memory without changing its already-delivered timeout result.
+These findings do not complete the app-wide UX review. Broader task creation/approval flows, voice flows, remaining settings, and actual layout/accessibility/runtime behavior still need coverage. Billing remains excluded. No live target requests or preferences were used for this work.
+
+CURRENT SCOPE — APP UX ONLY
+Prioritize what users see, what actions do, flow transitions, and error/recovery behavior. Billing is excluded. Implementation tracing is supporting evidence only. Saved artifacts are the source; do not make logged-in target requests. Static behavior does not establish visual clarity or live usability.
+
+HEYCLICKY UX INVESTIGATION — CURRENT SCOPE
+User clarified that only app UX matters; billing excluded. Deliverable is an evidence-backed account of screens, entry points, visible states, transitions, gestures, keyboard interaction, permissions, motion and recovery behavior. Internal details matter only when they explain that experience. Existing internal reports are supporting evidence, not completion criteria by themselves.
+
+PRIORITY AFTER SCOPE REAFFIRMATION
+Prioritize the first-use journey, starting and resuming tasks, and voice/drawing interactions. Further document-viewer implementation details are lower priority unless they explain a visible usability problem. Billing remains excluded. Preserve the restriction against conspicuous logged-in target requests; use retained offline evidence.
+
+CURRENT ONBOARDING COVERAGE (supersedes historical gaps below)
+Static traces now connect the introductory modal's finish to the notch sign-in surface, browser sign-in start/callback feedback, signed-in welcome, permission cards, All set / Meet HeyClicky, and natural video end to a delayed tutorial invitation. Saved state and eligibility can omit stages; this is not a single mandatory sequence. Meet HeyClicky marks general setup completed before exercises, so that flag is not proof of tutorial completion.
+
+Still unresolved: the intro's complete branch-by-branch navigation, some alternate copy, browser abandonment without a callback, visible video-skip confirmation, and actual layout/accessibility/runtime behavior. Broader task creation, voice/dictation, drawing and settings remain in scope. See ux-onboarding.txt and its linked function evidence for the confirmed paths and limitations.
+
+ONBOARDING CLARITY ASSESSMENT
+The recovered instructional copy is understandable: it introduces microphone testing, holding a shortcut to speak, drawing around screen content, computer control, typing and dictation with concrete examples. This is a copy assessment, not a verified end-to-end usability result. The number of interaction modes may increase learning effort; this is a review hypothesis, not an observed user failure. Initial welcome/sign-in/permission order, actual layouts, disabled-control explanations and recovery still need verification before judging the complete onboarding understandable. See ux-onboarding.txt for evidence and limitations.
+
+COVERAGE CHECKLIST
+Partial: onboarding stage progression, mic acceptance, conditional speaker/drawing steps, skip/finish cleanup and farewell. See onboarding.txt. Still needed: initial welcome/sign-in/permission order, visible controls, layouts, navigation, skip/resume and failure states.
+Partial: drawing engine semantics and extension browser interaction. Still needed: visible affordances, cursor/annotation lifecycle, cancellation and permission recovery.
+Partial: permission ordering and recovery presentation (ux-permission-flow-summary.txt, ux-permissions.txt), routine settings actions (ux-routines.txt), and Home/notch navigation declarations (ux-home-and-notch.txt).
+Open: runtime Home/navigation behavior, agent creation and selection, task cards and progress, questions/answers, files and notes, history/resume, keyboard/voice/dictation entry, remaining settings, notifications, accessibility/reduced motion and empty/error states.
+
+BUNDLED VISUAL EVIDENCE
+Resources/onboarding-intro-v2.mp4: 117.758 seconds, 1280x720 H.264 with AAC audio. Sampled first 80 seconds every 5 seconds; contact sheet shows a talking presenter and a blue bottom progress line, not an app walkthrough. Do not infer interactive UI from this video. Audio has not been transcribed and final portion not yet reviewed.
+Resources/clicky-spatial-demo.mp4: 5 seconds, 944x576. Initial samples show an anatomical shoulder illustration, black cursor, small red marks and a translucent red drawing stroke. This is a bundled demonstration, not evidence of currently running app behavior. Retained a five-frame sheet sampled once per second.
+Evidence: evidence/ux/*-video.json and *-contact-sheet.jpg. Generated directly with local ffprobe/ffmpeg; app not launched and no network requests.
+
+TUTORIAL CONTROL: MUSIC
+Native SwiftUI function 0x102a1e700 creates a button and supplies accessibility label Turn tour music off or Turn tour music on according to current state from FUN_101f88e5c. Action 0x102aa5cd8 -> 0x102a70890 reads that state, negates it, and calls FUN_10224c2e0. This confirms an interactive tour-music toggle with state-dependent accessible labeling. Icon, placement, hover appearance and default value remain unverified. Evidence: evidence/ux/tutorial-music-control.c and tutorial-music-action.json.
+
+Search coverage: tutorial-visible-string-candidates.json and tutorial-decoded-literals.json cover only native functions 0x102a00000..0x102a50000. Most text is outside this range or indirectly encoded; absence in this bounded extraction is not absence from UI. Candidate logs about tour visibility are diagnostics, not visible instructional copy.
+
+Scope reaffirmed: app UX only. Billing is excluded. Continue from retained offline evidence; no logged-in target requests. Composer control identity correction and visibility findings are recorded in ux-attachments.txt.
+
+Conversation history now partially traced in ux-history.txt: empty/loading/error text, retry throttling, and separate local/server earlier-message paths. Thread resumption remains open.
+
+Document preview investigation started: ux-documents.txt records format routing and loading presentation; interactions and recovery remain open.
+
+Document coverage expanded: ux-documents.txt now covers header controls, external opening, Finder fallback, non-Markdown failures and cancellation, file-keyed load tasks, and Markdown extension routing. Markdown rendering/recovery and actual switching behavior remain unverified.
+
+DOCUMENT INTERACTION COVERAGE UPDATE
+Document notes now trace Markdown file watching (150 ms reload coalescing, one 200 ms reattachment attempt after delete/rename), cancellation, selected-text versus no-selection Copy, code/quote Copy payloads and feedback, and the exact quote control suppression prefix. These are static traces, not runtime validation. Remaining document gaps: whole-document source format and surface linkage, link destination handling, PDF controls, spreadsheet interactions, resizing and visual layout. Broader onboarding, agent/task creation and resumption, voice/dictation, drawing and settings gaps above remain open; document-detail progress does not establish full UX completion.
+
+TASK CONVERSATION COVERAGE UPDATE
+Full-window sidebar selection now traces to a conversation identified by its entry key. Sending a follow-up routes to that job/agent; local rejection preserves draft text and attachments. Stop requests local cancellation and an interrupted result. An accepted follow-up can reuse an interrupted task model and reset it to queued. These are verified static code paths, not live execution guarantees. See ux-history.txt for evidence and caveats. Remaining task gaps include initial creation flows, complete conversation loading, restored draft/scroll behavior, visible status/error mapping, and asynchronous launch/retry outcomes.
+
+CHROME TASK-RECOVERY UPDATE
+The setup flow can release held task starts after successful setup and has a separate not-now branch that continues without Chrome. The connected-only Keep going card button must not be described as a setup-skip button. Shared release/decline behavior is statically traced in ux-history.txt; card parent actions, connection-event wiring, and visible recovery outcomes remain open.
+
+CHROME SETUP COVERAGE UPDATE
+ux-history.txt now records actual settings labels/actions; old-extension replacement conditions; installed-browser selection and activity ranking; intended browser-specific guided steps, profile selection and administrator-block handling; voice-idle gating; held-task release and explicit decline. Remaining Chrome gaps: connection-card parent callbacks, browser-opening result/error UI, connection-observer wiring, visible guidance delivery and old-copy cleanup. Static evidence does not establish runtime presentation.
+
+SCOPE CLARIFICATION — APP UX ONLY
+Focus remaining work on visible screens, onboarding clarity, user actions, transitions, feedback and recovery. Billing is excluded. Internal implementation details are supporting evidence only where needed to establish user-visible behavior. Findings remain based on retained artifacts; live behavior and visual usability are not established by static analysis.
+
+PRE-SIGN-IN COVERAGE UPDATE
+ux-onboarding.txt now identifies the separate introductory screen copy, conditional language step, color/hatching and skill-selection controls, and the final panel handoff. Initial selected screen, complete navigation order, parent completion callback, sign-in/permission sequencing and resume remain open. Earlier onboarding gaps are partially reduced, not closed. Chrome observer wiring and guidance cleanup previously listed as open above have since been traced in ux-history.txt and ux-home-and-notch.txt; those older coverage notes are historical.
+
+ONBOARDING HANDOFF UPDATE
+The intro's finish callback now traces through clickyShowPanel to NotchWindowManager and shared presentation resolution. A signed-out branch selects onboardingPinned under its setup/presentation guards. Exact pinned-card controls and full permission/auth sequence remain open; see ux-home-and-notch.txt and ux-onboarding.txt.
+
+VOICE/DICTATION SETTINGS COVERAGE
+ux-voice-and-dictation.txt now records the four shortcut action descriptions, Change/Cancel wiring and action-specific collision feedback. Recording, binding acceptance/persistence, actual voice/dictation state transitions and insertion recovery remain unresolved. Static instructional copy is distinguished from runtime behavior.
+
+DICTATION RECOVERY COVERAGE UPDATE
+ux-voice-and-dictation.txt now traces permission-message lifecycle, partial-text recovery to clipboard, completed-result insertion fallback, registered notice presentation state, six-second hide scheduling, and the notch X dismissal. Starting a new dictation clears the old notice without clearing clipboard text. Start/stop/cancel event routing, actual insertion outcomes, layouts and accessibility remain incomplete.
+
+DRAWING UX SCOPE SPLIT
+ux-drawing-and-annotation.txt distinguishes user pointing marks from assistant-generated drawing output and records the recovered spatial-description code. Actual hold/release/cancel linkage, mark lifecycle and visible controls remain open.
+
+NEW-TASK ENTRY COVERAGE UPDATE
+File-only ordinary submission supplies a default request after attachment conversion. Auth and another prerequisite can return after the composer has cleared; external restoration and visible recovery remain unverified. See ux-attachments.txt and new-task-* evidence. Next trace: downstream dispatch failure feedback and the second prerequisite, staying within app UX scope.
+
+SUBMISSION PERMISSION GATE RESOLVED
+The second prerequisite accepts current screen-recording permission OR a saved earlier confirmation. A prior grant can bypass this gate even if current preflight fails; actual capture recovery remains unverified. Ordinary text dispatch now has confirmed prompt/attachment/read-aloud state initialization. See ux-attachments.txt.
+
+TEXT SUBMISSION FAILURE COVERAGE
+Connected async error handling clears active request state and selects a classified message or generic fallback. Exact message rendering remains open; no draft restoration occurs in these continuations. Active-turn replacement invokes text finalization, whose downstream visible history behavior still needs verification. See ux-attachments.txt.
+
+ERROR PRESENTATION COVERAGE UPDATE
+Typed-submit errors are connected to the shared response string and completion/history routing. Network-blocking and region-restriction message templates are recovered, including voice wording in the typed path; generic fallback wording and exact surface selection remain open. See ux-attachments.txt.
+
+RESPONSE LIFETIME COVERAGE
+Completed standalone text responses schedule size-dependent 10/20/30-second dismissal, with an unresolved condition capping it at 6 seconds. Timer suspension and precise surface routing still need tracing. Details and limitations in ux-attachments.txt.
+
+RESPONSE COUNTDOWN REFINEMENT
+Reading-time heuristic uses words plus estimated 74-character wrapped lines. Hover/composer suspension flags preserve remaining time, excluding suspended time from countdown; exact UI event linkage remains open. See ux-attachments.txt.
+
+COMPOSER PAUSE INTERACTIONS
+A NotchTextInputSurface mode pauses response dismissal for focus or a nonempty draft/attachments. Its file picker pauses before opening and recomputes the pause after closing, including cancellation. Exact mode identity and hover region remain open. See ux-attachments.txt.
+
+HOVER PAUSE INTERPRETATION REFINED
+The presenter state feeding hover suspension also has programmatic open/close writers. A raw pointer-region interpretation is not yet justified. Composer line/attachment callbacks are linked to pause recomputation; modifier registration remains open. See ux-attachments.txt.
+
+COMPOSER PAUSE BINDINGS VERIFIED
+SwiftUI onChange registrations now connect focus, attachment and text changes to pause recomputation. The registration gap is closed; mode-case identity remains open. See ux-attachments.txt.
+
+TEXT-RESPONSE FOLLOW-UP PAUSE VERIFIED
+Metadata layout closes the composer mode mapping: text-response follow-up protects the response countdown during focus, a nonempty draft/attachments, and attachment picking. Pause/resume and onChange linkage are statically traced. Actual rendering/timing remains untested. See ux-attachments.txt.
+
+RESPONSE DISMISSAL COVERAGE
+Timer expiry cancels pending response/image work and clears transient response text/images. Conditional history cleanup clears the live-reply marker rather than deleting entries; universal history retention is not established. See ux-attachments.txt.
+
+ACTIVE TEXT RESPONSE DISMISSAL
+Dismissal reaches an existing voice controller only for an active text turn, requests interruption and sets audio suppression before finalization. It is not a universal stop-all-voice action. See ux-attachments.txt for evidence and delivery limits.
+
+SHORT RESPONSE TIMER CONDITION CLOSED
+The six-second cap is driven by a flag sampled on response initialization: invitation or tutorial exercise except interview/finale. Inactive/interview/finale do not set it. Suspension still preserves remaining time; continuous stage-change updates are not established. Current summary in ux-attachments.txt corrected.
+
+TUTORIAL EXIT DEFERRED RESULTS
+Entering inactive tutorial phase schedules processing of queued agent-result opens when entries exist and no worker is active. Actual opening/recovery remains untraced. Direct phase hooks do not themselves reset the response timer; broader observer effects remain open. See ux-onboarding.txt.
+
+RESULT PREVIEW ROUTING VERIFIED
+Existing non-directory files except HTML variants qualify for internal preview. An active main app window receives them; otherwise the notch route is used. Qualification does not guarantee successful rendering. See ux-documents.txt and ux-onboarding.txt.
+
+DOCUMENT RESTORATION EXPIRY
+Remembered navigation is discarded at restoration when >=15 minutes old. Unexpired document restoration checks that the file exists; missing files take fallback navigation instead. Entry-event and reply-fallback details remain open. See ux-documents.txt.

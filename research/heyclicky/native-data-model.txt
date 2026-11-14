@@ -1,0 +1,10 @@
+NATIVE DATA MODEL — PARTIAL SWIFT METADATA
+Source: evidence/swift-type-fields.json; selected records with addresses: evidence/native-domain-fields.json. These are compiled field/enum names. Generic field types, serialization keys, defaults, disk locations and runtime transitions are not yet verified. No user database or credential values were read.
+
+ClickyJob tracks identity, title/prompt, thread and folder, creation/completion, outcome/summary/reply, artifact lists, seen/dismissed/archived state, follow-ups, Chrome waiting/skipping, runs and a waitingStep. ClickyJobRailPhase enumerates queued, working, needsYou, done, failed, stopped. ClickyJobUserStep carries step/page/doneWhenURLContains/askedAt. This ties browser waiting to job metadata, without proving the watcher transition logic.
+
+CodexProcessManager owns process, protocolClient, homeManager, environment overrides and stderr reader. CodexProtocolClient owns stdin/stdout pipes, request IDs, pending requests, response projections and notification/server-request/connection callbacks. CodexAgentSession maps app threads to harness threads, tracks active tasks and finished turns, and exposes callbacks for progress, plans, file changes, integrations, computer use and MCP startup/OAuth events. Dispatch methods still require code tracing.
+
+SupabaseAuthManager fields include access/refresh token state, refresh task identity, failure descriptions/dates, cooldown and keychain migration/read/signout-cleanup diagnostics. These names do not prove token storage format, successful migration or actual refresh policy. No token values were accessed.
+
+WarmStreamingConnection bundles transcriber, languageCode, customWords, usageContext and expiryWorkItem. DictationFocusContext includes element/process/app/site/role/frame, surrounding and selected text, and isSecure. This establishes structural context available to dictation; inclusion conditions and privacy filtering require control-flow evidence.

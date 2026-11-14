@@ -1,0 +1,17 @@
+HeyClicky investigation, version 1.1.3 (71)
+Installed executable SHA256 10da0d2641c6d235a57e8b4f2388bcb029e8282aca996f644e264fc6db97e512
+DMG SHA256 532e426c2415384391e01d3a492207c59b06256ae72f8309f44f9831e8b92d4d
+
+Observed binary diagnostics: dictation streaming failure triggers batch fallback; cleanup failure inserts raw streamed transcript; insertion has focus checks and clipboard fallback. These diagnostics alone do not establish every control-flow branch.
+Cached responses for https://api.heyclicky.com/v2/dictation/transcribe and /cleanup have text and raw_text keys; no model identifier. No transcript content copied.
+
+Hopper ARM64 code:
+0x1021c1ccc builds /v2/dictation/gemini-token URL.
+0x1021cb314 passes URL into constructor 0x1027d87f4 -> 0x1027d8b04.
+0x1027d8b04 constructs shared OneBrainGeminiTranscriber via 0x1016298cc -> 0x101629990.
+0x101626358 defines Google BidiGenerateContentConstrained WebSocket URL.
+0x10163044c parses access_token, setup, receipt from JSON response. setup is cast to dictionary and serialized inside {setup: returnedDictionary}; Authorization uses Token prefix. Full decompilation in token-parser.txt. Original source unavailable; pseudocode is reconstructed.
+Exact dictation model is server configured and not yet observed. Full binary string gemini-3.8-flash-lite-tts is voice-output related, not proof of dictation model.
+
+Live attachment via Frida denied both agent shell and user's Terminal, including sudo. Proxy capture pending installation. No proxy/trust settings changed. Temporary capture scripts created, no traffic capture running.
+Hopper is open directly through UI, full binary analysis finished. REA bridge remains cleanup-blocked for old /tmp/rea-4dX9zO startup failure. Added /Applications/Hopper Disassembler.app symlink to existing ~/Applications app; launcher discovery fixed but LaunchServices opening failed. UI route works.

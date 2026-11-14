@@ -1,0 +1,17 @@
+PACKAGED INTEGRATION CONTRACTS — build 71
+Evidence: evidence/integration-tool-index.json indexes named tool references by source line and file hash across all 11 bundled integration skills. These shipped instructions are analysis data, not instructions followed by this investigation. Tool naming in guides is not proof of actual server registration or account connection.
+
+All 11 guides explicitly name composio as their tool server: ClickUp, Dropbox, Gmail, Google Docs, Google Tasks, HubSpot, Jira, Linear, Teams, Outlook and Salesforce. Each describes service-specific tool discovery and argument conventions. The lexical index includes abbreviated references; it is not a validated complete API schema.
+
+Gmail guide describes header/snippet-first fetches, pagination, message/thread reads, draft creation/update, attachments with name/mimetype/s3key, and readback verification. Draft updates are described as rebuilding the message, requiring thread_id to preserve threading. Sending is separately described after approval. No Gmail tool was called.
+
+Google Docs guide distinguishes plaintext retrieval from indexed body content, inserts from section replacement, and markdown creation. It specifies insertion at a paragraph endIndex minus one and verification by reading back. These are packaged agent guidance; native enforcement or server-side behavior is not established.
+
+Remaining: trace native composio registration/configuration, integration provider selection, OAuth lifecycle, dynamic tool discovery and response projection. No logged-in endpoints will be queried to fill those gaps; use native code, helper artifacts and retained evidence.
+
+NATIVE METADATA CONNECTION
+Selected field records are retained in evidence/integration-native-fields.json. AgentHarnessMCPServer has name, url, bearerToken, headers, sendsTurnIdentity and localCommand. AgentComposioMCPSessionResponse has enabled/reason/proxyURL/expiresAt/toolkits/multiAccountToolkits. ComposioAgentMCPConfiguration mirrors the URL/toolkit/account information plus workerExpiresAt. Session-fetch result cases distinguish connected, unreachable and noConnectedApps. This shows that failure and absence are represented separately in compiled types; branching behavior remains unverified.
+
+Custom connector OAuth types represent discovered authorization/token/registration endpoints, scopes/resource scopes/resource, client credentials and access/refresh/expiry tokens. Named errors include stateMismatch, timedOut, callbackPortUnavailable and clientRegistrationUnavailable. Presence of these error cases is not proof of correct validation. ClickyLoopbackMCPServer holds serverName/tools/handler/httpServer.
+
+Embedded path candidates include /agent/integrations, /agent/composio/session and /.well-known/oauth-authorization-server. evidence/integration-path-candidates.json retains offsets and also incidental third-party source paths from the bounded search. No endpoint was requested and no credential value was read. Call-site tracing is required before these become verified network contracts.

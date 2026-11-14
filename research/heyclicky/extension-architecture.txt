@@ -1,0 +1,84 @@
+EXTENSION 0.6.5 — OFFLINE SOURCE ANALYSIS
+Source identity: evidence/extension-source-inventory.json. No extension code executed or browser API invoked.
+
+background.js imports BrowserBridge and ModelView from core.mjs. It connects to native host com.heyclicky.browser and sends hello with protocol 1 and a persistent profileId (storage.local; generated UUID when absent). Incoming ready updates selected/reachability state. Losing selection after connection, host stop, and disconnect call bridge.stop. Command messages pass through bridge.execute then ModelView.forModel; success/error replies carry the original command id (background.js lines 50–83).
+
+Tab ownership persists in storage.session under clickyTabs. Across an extension update, a storage.local handoff is accepted only if less than ten minutes old and no session state exists; the handoff is then removed. execute/stop are counted as in-flight work to defer updates until idle (background.js lines 12–37).
+
+BrowserBridge.execute strips inBatch, afterSteps and deadline from incoming requests, handles sweep/end, and otherwise requires a nonempty app-issued task string. Owner, group title, cursor color and a normalized 160-character say field are tracked per task (core.mjs lines 503–524).
+
+Tab listing excludes incognito and non-HTTP(S) tabs; it caps output at 500 entries or 650000 serialized bytes and reports truncation. Per-tab commands are queued to serialize actions. Single action operations are converted to one-step batches and return a settled snapshot alongside results/errors (core.mjs lines 526–570).
+
+Exported time budgets in LIMITS: load 8 s, saving 3 s, batch 30 s, single 20 s, batch reserve 3 s, 20 batch steps, wait 10 s/default and 20 s/max, observe 12 s, locate 1.5 s, download 45 s, chooser 4 s and cursor glide 240 ms. These are configuration constants, not measured latency.
+
+Remaining: command semantics, debugger attachment, DOM/snapshot extraction, file transfer, tab cleanup/ownership, cancellation and UI/update behavior. Shipped source is available for these paths; native orchestration still needs independent analysis.
+
+TAB LIFECYCLE — core.mjs 113–367
+Owner identifies a thread; task identifies one turn. Owned tabs, homes and kept tabs survive worker restarts through savedState. Claims of user tabs, active task membership and cancellation state are not included in savedState.
+
+hold rejects competing holders. Read-like operations on a background tab do not claim it. claim records the original group/window and, when movement occurs, index; pinned tabs and non-normal/incognito windows are held without regrouping. release restores the prior group (recreating it if needed) and position only if the tab is still in the expected temporary group and original window. User-moved tabs are left where they are.
+
+end always marks the task stopped, clears task-owned staged files/download reports, removes attached tab state and detaches the debugger. With tidy=true it closes unkept owned tabs, releases claimed user tabs and folds groups. closeUnkept exempts the currently viewed tab and tabs moved outside the owner group, transferring them out of ownership instead of closing them. With handOver=true, all owner tabs lose automation ownership and keep marks, preserving them for the user.
+
+A code-level limitation: end deletes claims before its tidy branch, but only calls release inside tidy. Thus disconnect/stop paths using tidy=false lose restoration metadata without restoring prior grouping. savedState excludes claims, so it cannot recover those prior groups on restart. This is a static consequence of the inspected implementation, not an observed user incident.
+
+sweep ends stale tasks and closes unkept tabs for owners without running turns; it derives busy owners from task paths. keep accepts only result or waiting, and only owned tabs (claimed user tabs return a note that they already remain open). Persistence writes are asynchronous and errors are swallowed. These details matter for reproducing failure and cleanup behavior, not just the happy path.
+
+FILE TRANSFER — core.mjs 1257–1390, 1711–1728
+Uploads are staged as sequential base64 chunks under a task-bound stageId, with file indices 0..9 and a per-stage cap of 140*1024*1024 characters. This is an encoded-character bound, not a decoded-byte limit. Ordering/size failure deletes the whole stage. The upload consumes the stage immediately, checks its task, and optionally verifies the current site against request.site. No site check occurs when that field is absent.
+
+The isolated Bun probe probes/staging.mjs executes the original stageFile method body with a stubbed filename helper and no browser/network APIs. evidence/staging-probe.json records five passing checks: normal acceptance, cross-task rejection, acceptance of an extra sequential chunk beyond declared total, whole-stage deletion on out-of-order input and rejection of file index 10. Excess chunk counts are rejected later by giveStagedFiles; staging acceptance alone is not successful upload.
+
+Staged bytes are decoded to Blobs in an isolated page world and assembled as File objects using DataTransfer; input/change events are dispatched and resulting file sizes checked against declared sizes. Legacy path uploads accept 1..10 absolute paths and use DOM.setFileInputFiles. Chooser interception is cleared in a finally block. These browser execution paths remain statically inspected only.
+
+Explicit downloads use Chrome downloads with uniquify and saveAs:false; HTTP(S) only, without URL credentials. Completion is polled every 250 ms up to the deadline/45-second budget. Held or unfinished downloads return status for later reporting. Naming uses HeyClicky/<task slug>/<filename>. Page-started download attribution uses the most recent automation input within ten seconds, not a source-tab proof; concurrent/user downloads may therefore be misattributed by that heuristic.
+
+BATCH CONTROL — core.mjs 570–575, 700–745
+The batch validates all operation names and tab consistency before any step runs. Allowed steps are open/click/fill/press/scroll/wait_for/back/upload, 1..20 per batch. Without tabId, the first step must open a new tab. Execution serializes per tab, and the deadline is calculated before entering the queue, so time waiting behind another operation consumes its budget.
+
+Each step requires at least the 3-second reserve remaining, then receives deadline minus that reserve. Loading, dialogs and thrown errors stop later steps. The final snapshot is attempted even after a step failure and receives max(original deadline, now + 1500ms); therefore it may extend beyond the nominal batch deadline. The source comment claiming the closing look uses only remaining budget is stronger than the code guarantees.
+
+Offline probe probes/batch.mjs executes the original batch method with a synthetic clock and stubbed methods. With 28 seconds elapsed in a 30-second budget, it runs no actions and attempts one snapshot. The error says time ran out before step 1 and separately lists step 2 as not run. Results retained in evidence/batch-probe.json. This validates method control flow only, not Chrome scheduling or native app timeout behavior.
+
+SNAPSHOT AND MODEL VIEW — core.mjs 67–111, 1054–1147
+Snapshots read the accessibility tree, filter ignored/layout-only nodes and duplicate child StaticText, cap names at 1200 characters, and preserve selected non-false states. Query terms are capped at 200 characters. Budget is 600 nodes / 640000 estimated serialized bytes; over-budget selection favors nodes on/near the viewport using bounded location queries. References are allocated per backend DOM node and retained until navigation invalidates the epoch.
+
+ModelView stores the last full snapshot per tab. Query/interactive subsets do not replace this baseline. After actions on the same URL, it returns added/removed lines when at least half the current lines are retained and differences are at most max(40, 30% of current lines); otherwise it emits the full list. Comparison uses sets, so element reordering alone is invisible to the change summary.
+
+Offline probe probes/model-view.mjs executes the original ModelView and snapshotLines against synthetic snapshots only. Three passing checks confirm reorder-only changes report unchanged, partial snapshots preserve the full baseline, and URL changes force a full result. evidence/model-view-probe.json records results. This does not validate real accessibility coverage, iframe behavior or page geometry.
+
+COMMAND EXECUTION — core.mjs 476–501, 746–978
+Debugger attachment uses protocol 1.3 after HTTP(S)/non-incognito checks and page-load completion. Page.enable failure removes state and detaches. Each commander call checks task cancellation, tab-state identity, current/pending URL and (when requested) navigation epoch both before and after asynchronous tab lookup. It rejects pending navigation rather than submitting the command.
+
+In-place open requires ownership or a claim; close requires ownership. Navigation invalidates references. Ref-targeted click/fill/upload/download resolve backend DOM nodes and reject stale epochs, with a distinct error when an earlier batch step navigated. Enter/Backspace/Delete require a current observation. Coordinate click/hover/drag require a screenshot in the same epoch; drag dispatches 12 interpolated pointer moves spaced 16ms apart.
+
+Focused typing requires nonempty text <=20000 characters, an editable target, and rejects a password field. javascript separately accepts an async-function body <=20000 characters, runs Runtime.evaluate with userGesture and awaitPromise, and has a 15-second wait limit. Its result is JSON-stringified then clipped to 20000 characters, which can yield a truncated non-JSON string. The typing password check is specific to that operation; it is not a comprehensive enforcement boundary over arbitrary JavaScript execution.
+
+Input dispatch races completion against a page-dialog notification so confirm/prompt dialogs do not block the action forever. Dialog handling requires a Boolean accept and the attached task; prompt text is added only for prompt dialogs. All conclusions here derive from local source; no browser commands were executed.
+
+BACKGROUND/UI/UPDATES — background.js 85–252, popup.js 1–75
+Connection states are working, connected, profile, setup, offline and checking. Selection plus active task membership controls working; a reachable app with an unselected profile shows profile. Host errors containing not found/forbidden map to setup. Popup adds stalled for a nonresponsive worker.
+
+Internal UI messages require sender.id equal to this extension and sender.url beginning with its extension root. Supported controls include status, connect, openApp, focusTab and stop. Stop hands tabs over and then sends a native stop message. Status lists at most three running jobs and four tabs per job. The popup uses returned HTTPS favicon URLs as image sources, so opening it can cause image requests; it was not opened during this investigation.
+
+Reconnect alarm period is 0.5 minutes; startup and installation also call connect, and a fresh install opens welcome.html. Update availability sets a flag. Reload waits until inFlight is zero and no task is active with a reachable app. It saves owned-tab state with a timestamp, rechecks for work that started during the save, and reloads if still idle. Storage failure is swallowed and does not prevent reload, potentially losing handoff state.
+
+Main-frame navigations invalidate references; subframe navigation does not in the debugger event handler. tabs.onUpdated URL/loading events also invalidate. Dialog, chooser, download and detach events are forwarded to BrowserBridge. Cursor overlay defaults on unless storage.local.cursorOverlay is explicitly false.
+
+TEXT/TABLE EXTRACTION — core.mjs 61, 1245–1254, 1392–1401, 1731 onward
+extract requests 40000 text characters, 20 tables, 200 rows/table and 60000 cumulative CSV characters. It chooses main/[role=main] when its normalized innerText is at least 25% of body text; otherwise it walks body excluding navigation/header/footer/aside regions. It skips hidden/aria-hidden elements, form inputs, scripts, media, canvases and iframes; traverses open shadow roots and assigned slots; emits headings, lists, links and image alt text.
+
+Tables support HTML table and ARIA table/grid/treegrid forms. Each cell is normalized and clipped to 300 characters, captions to 120. CSV escaping handles quotes, commas and newlines. The cumulative character cap slices the CSV string directly, so truncated output can end inside a quoted field or row. The reported row count counts rows collected before CSV clipping. Per-table row clipping sets the table truncated flag; it does not necessarily set the overall result truncated flag. Cell clipping has no distinct flag.
+
+The helper tries to create a named isolated world per navigation epoch. If creation fails, extract omits contextId and still evaluates, falling back to the default context. Therefore the nearby source comment claiming extraction always runs isolated is not guaranteed by the implementation. This is a static observation; no page scripts were run.
+
+Extraction creates no actionable references. Text/CSV are returned as untrusted page content. The main-frame-only and no-field-values descriptions are intended scope; special handling via innerText (headings, tables, PRE, links) means exact content exclusion still requires synthetic DOM tests before claiming universal guarantees.
+
+COMPLETION AND TIMEOUTS — core.mjs 401–421, 1010–1052, 1171–1215
+settle waits 150ms, checks navigation/load, waits for DOM quiet (250ms target, 1s or 1.5s budget), then checks load again. It reports navigated/loading/dialog and pending saves. Save tracking covers Fetch/XHR except GET/HEAD/OPTIONS, retaining at most 100 outstanding requests; only requests started within three seconds of the recorded input count. Completed/failed request events both remove entries, so absence of pending is not proof of successful saving.
+
+withinLimit races the supplied promise against a timer and clears the timer; it does not cancel the underlying operation. Its generic timeout text says nothing changed, which this utility cannot guarantee. Offline probe probes/timeout.mjs confirms a synthetic operation still completes after the original helper rejects with that message. This matters to JavaScript evaluation and other potentially mutating consumers; no real page mutation was attempted.
+
+wait_for supports text and/or URL substring, inverted by gone, requires no loading and no dialog, polls every 250ms, defaults to ten seconds and caps at twenty seconds plus remaining deadline. When both conditions are supplied, both must pass. Exceptions in text probing are retried unless task cancellation is detected.
+
+Screenshots are viewport JPEG quality 45, optionally downscaled to CSS pixel dimensions via createImageBitmap/OffscreenCanvas, rejected above 750000 base64 characters, and tagged with the navigation epoch. If those rendering APIs are absent, toCSSPixels returns the original image; the size fields still describe CSS viewport dimensions, so coordinate fidelity depends on that environment capability. No screenshots were taken in this investigation.

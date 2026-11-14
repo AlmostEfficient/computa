@@ -1,0 +1,14 @@
+PERMISSION FLOW — UX REFERENCE
+Verified from shipped code; not a live walkthrough. Detailed addresses and limitations: ux-permissions.txt.
+
+1. Find the first missing capability in order: microphone, accessibility, screen recording, usable screen capture. Already-granted capabilities are skipped.
+2. Present one active card with a title, explanation, primary action and status. Completed core permissions contribute completed-step entries.
+3. Microphone requests a native prompt. Accessibility and Screen Recording guide the user into macOS Settings, with a floating helper described by the UI.
+4. Waiting copy explains where to act. Recovery buttons reopen the relevant Settings pane; restart-required copy offers Quit & Reopen. Screen Recording guidance distinguishes screen-and-audio access from audio-only access.
+5. Test capture is separate from the Screen Recording switch but uses the same progress index 3. It can request a picker, show failure and retry, or report ready.
+6. Granted snapshot state takes display precedence over cached waiting/denied state. A pending capture request displays waitingForPicker. Otherwise cached runtime status is used, defaulting to notDetermined when absent.
+
+NOT YET VERIFIED
+Exact card dimensions, typography and animation; machine-code confirmation of enabled-state flags; completed-chip renderer; total displayed count; driver timing/polling; how closed native prompts are detected; restart/resume persistence; guide drag behavior; terminal transition into onboarding. UI wording promising automatic advancement is documented but not yet independently traced.
+
+No target execution, permissions changes, microphone access, screen capture or service requests were performed.

@@ -1,0 +1,23 @@
+NOTE ENGINE — PARTIAL STATIC TRACE
+Source evidence/harness-bundle.js: note operations Ko at character 372128, partial parser tl nearby, note lifecycle class sl at 385182; retained in evidence/harness-source-regions.json. No user notes read or changed.
+
+LIFECYCLE
+sl reads notePath at construction and each beginTurn; read errors become an empty string. isFirstRun means the loaded document was blank, not necessarily the first conversation turn. beginCall snapshots the document by model-step name. If that step is retried, it saves the snapshot back before retrying, undoing note changes made during the earlier attempt. Results are deduplicated by tool call_id in memory; output-item events and finishOutput can both call apply without applying the same ID twice. Results and snapshots are not cleared by beginTurn; per-turn stats are reset.
+
+The whole-document note tool rejects empty content. On a first run, once the document has content, a second whole-document replacement is rejected with instructions to use incremental operations. On a later run with a preexisting note, whole replacement remains permitted. Incremental operation errors leave the document unchanged and are returned as tool-result errors. Successful edits save before quality diagnostics are reported; lint findings do not roll back a save.
+
+STREAMING PREVIEWS
+Responses output_item.added tracks recognized note calls; argument deltas accumulate into raw JSON. A custom partial parser tl recovers incomplete values and records which fields are complete. Whole-note previews use a nonblank partial md. Incremental note_add needs completed after, note_replace completed find; partial markdown is closed to a complete line/block through ok before preview. Other object operations wait for page plus completed relevant fields. The partial parser is permissive and is for preview only; apply uses JSON.parse on final arguments.
+
+Previews sanitize display text and coalesce through a 200ms timer; they emit note/preview events with text but do not write the file. Save clears pending previews, sanitizes, writes to notePath.clicky-<pid>.tmp then renames over the destination, and emits note/saved. This is atomic replacement on supported filesystem semantics, not fsync durability or external-edit conflict protection. The engine works from its in-memory doc during a turn; concurrent outside modifications are not merged here.
+
+CLOSING CHECKS
+A blank document returns no closing instruction. For an initially blank note, lack of an answer line triggers a note_answer request. Answer detection scans any line beginning '> ', accepting big= markup or nonempty text not beginning Checking/Looking/Finding (case sensitive). It does not establish semantic correctness or restrict detection to the top of the first page. Once an answer exists on the first run, uk removes plan checkboxes from the first-page region unless marked {needs}, avoids blocks it recognizes, and removes {now} markers globally. This can save an automatic cleanup before the model finishes.
+
+After a turn with note calls, rl checks for a '# ' title, more than four '## ' pages, immediately empty tiles/chart/letter/review blocks, paragraphs >260 characters, consecutive lists exceeding six items, and table lines with more than four pipe-delimited columns. It returns at most six distinct warnings. This is line/regex-based linting, not a full Markdown parse: escaped pipes, code and nested structures need edge-case verification. closingCheck adds a {now} warning if still present, then requests small edits. The main agent loop invokes closingCheck at most once per closing attempt via sA, so these warnings are model guidance rather than an unconditional validation gate.
+
+TEXT CLEANUP
+as removes Markdown links using internal turnNsearch/view/etc references while retaining link text, removes private-use citation-marker spans, and strips remaining U+E200–U+E2FF characters. This affects notes, previews and some surfaced messages; ordinary external links are not removed by these patterns.
+
+OPS AND FORMAT STILL TO TRACE
+Public definitions include note, note_add, note_replace, note_remove, note_tick, note_answer plus paper-object operations. Ko selects board/general operation maps and catches errors. Full matching/fuzzy selection, table/object schemas, conflict handling and rendering remain incomplete. The schema descriptions are evidence of intended behavior only until their operation implementations are traced.

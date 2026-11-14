@@ -1,0 +1,22 @@
+HEYCLICKY APP UX — VERIFIED INTERACTION SUMMARY (PARTIAL)
+Target: installed 1.1.3 build 71. Static shipped-code evidence, not live UI testing. Billing excluded. Detailed addresses and limitations: ux-home-and-notch.txt.
+
+TEXT ENTRY
+The qualifying double-Control signal reaches the text-input handler. In its eligible notch branch, an open composer closes only if it is focused and its window is active. An open but unfocused composer follows the focus/open route. Other mode guards still require mapping. The dedicated Control detector rejects a press longer than .4 seconds and certain intervening activity. Exact timing endpoints remain under verification.
+
+THIRD CONTROL TAP
+The second tap can emit text entry before the third tap emits a separate signal. The traced third-tap manager handler is a verified no-op in this build. Do not implement an always-on voice toggle merely because that signal is named for one.
+
+DISMISSAL
+Ordinary outside-click closure and answer-in-progress dismissal are separate paths. The answer-dismiss path clears presentation state; underlying generation continuation is unverified. Escape has a separate branch that explicitly cancels currentResponseTask. Its exact state conditions and earlier modal priorities remain unresolved. Abandoned-drag cleanup leaves the composer open if its hasDraft flag is set. Clearing that flag elsewhere does not prove stored draft text is deleted.
+
+REPLY CONTROLS
+Copy appears only for nonempty copyText. Clicking writes plain text to the clipboard and changes the icon to a checkmark, scheduling reset after 1.4 seconds. The UI does not check clipboard-write success before confirming. Footer text can include positive duration and finish time separated by a middle dot.
+
+SCROLLING
+The full-window chat's jump-to-latest control increments a request counter, then scrolls to the window transcript's bottom anchor with a .35-second easeInOut animation. It appears when the away-from-bottom flag is true and its supplied collection is nonempty. Home uses the same button with different placement, but its action and distance threshold remain unverified. The notch has its own bottom target. The shared button's sent-message feedback has a reduced-motion branch; some fades remain animated.
+
+NEXT COVERAGE
+Complete keypath/state mappings and Home/notch routing; agent creation/selection, task cards, attachments/documents, history, remaining settings, errors, and actual layouts still need investigation. This summary is not a completion claim.
+
+Read answers aloud: a speaker toggle beside Send persists the speech preference. Its tooltip explains that answers are spoken while being written; the constructor fallback is off. The internal name Library Mode should not be used as the UX label. Details/evidence: ux-attachments.txt.

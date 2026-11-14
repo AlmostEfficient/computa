@@ -1,0 +1,16 @@
+HARNESS WEB TOOLS — STATIC TRACE
+Source evidence/harness-bundle.js Pc/Lc ~335728, Hc/KI/Do/YI ~342300–346000. No URLs fetched and no search requests made.
+
+fetch_url accepts only an initial HTTP(S) URL, optionally rewrites allowlisted localhost ports through Hc, then uses fetch with redirect follow and 25s AbortSignal timeout. It sends a desktop Chrome-like user-agent ending ClickyBench/1.0, English accept-language and broad text accept types. It does not read browser cookies/session state in this implementation. No explicit private-network destination restriction is visible here. A URL starting with tunnel.base receives the tunnel bearer; this is a string-prefix test, not URL-origin/path comparison. Redirect/header behavior is delegated to the runtime and remains untested.
+
+YI reads at most 6291456 returned body bytes, cancels when the threshold is reached and clips the final chunk. A network chunk can temporarily exceed the retained limit. Body truncation is not explicitly identified in the resulting page text. HTTP status is checked after body reading. Binary content yields an informational result suggesting separate download, not its bytes. Text decodes UTF-8 nonfatally regardless of declared charset.
+
+HTML conversion KI is regex-based. It extracts title, removes comments/head and script/style/noscript/svg/template/iframe/canvas/form/select/button blocks, prefers the first main/article only if its stripped length exceeds 40% of the remaining page, then removes nav/footer/aside. Headings become '##', list items '- ', table cells pipe-separated text; anchors lose destinations. A finite entity map plus numeric code points is decoded. This does not execute JavaScript or provide rendered-DOM fidelity.
+
+Result text defaults to 20000 characters, clamps requested max_chars to 500–60000, uses nonnegative floored offset and reports a continuation offset. It reports the length of the transformed retained text, not the original resource length. Repeated offset calls refetch/retransform the page; no page cache is visible in Do, so a changing page can shift offsets.
+
+Brave search Pc requires a provided key, clamps count 1–10 (default 6), requests extra snippets and moderate safe search. Request timeout is 15s. HTTP 429 retries at 0.8/1.6/2.4s, up to four requests total; other errors fail. It emits titles, URLs and description plus at most two extra snippets, stripped/limited to 500 characters. Local hosted search s_ uses worker endpoint, count default 8 (1–10), optional freshness, 15s timeout and highlights capped at 900 characters; full backend-provided text may replace formatted results.
+
+Search budgeting Lc defaults 10 total, with last 2 reserved for purpose=verify, and at most 3 per ordinary tool step. A permitted search increments counters before dispatch, so failed searches still consume budget. Script tool execution passes perStep Infinity but keeps total/reserve checks. Hosted provider web search is separate and not necessarily governed by Lc; Claude hosted schema has max_uses 8. Do not conflate these budgets.
+
+Outstanding: synthetic redirect/header/body-limit fixtures, extraction edge cases, exact backend search availability/cache behavior, native UI citation rendering and provider-hosted search quotas. Server-side restrictions are unknown.

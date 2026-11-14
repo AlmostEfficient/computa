@@ -1,0 +1,136 @@
+HEYCLICKY VOICE AND DICTATION UX — PARTIAL
+Scope: app UX only, billing excluded. Evidence is offline retained decompilation for 1.1.3 build 71; no recording, keyboard action, app launch or target request was performed.
+
+CURRENT USER FLOW SUMMARY
+- Settings separates speaking to HeyClicky from inserting dictated text, with held and hands-free dictation shortcuts.
+- Dictation checks Accessibility and microphone access. The first microphone prompt's completion does not itself restart the attempt.
+- Held recording shows Dictating; hands-free shows Dictating (hands-free). A conditional quick second press can lock recording hands-free.
+- Normal finish publishes Transcribing. Escape takes a separate cancellation path and invalidates late results.
+- An empty/whitespace result ends the session and clears the status without inserting text or replacing the clipboard.
+- Available text can be inserted or fall back to manual paste. Partial text can also be salvaged after failure.
+- Clipboard recovery offers Copied to your clipboard / Press ⌘V to paste in a notch notice with an X and a six-second auto-hide path. Dismissing the notice preserves clipboard text.
+
+These are static code-backed flows, not live usability observations. Remaining material gaps: physical shortcut recognition/defaults, full voice-assistant behavior, insertion targeting and success verification, some callback presentation, and rendered/accessibility behavior. Historical “unresolved” notes below are superseded only by later explicit evidence sections.
+
+SETTINGS EXPLAINS FOUR DISTINCT SHORTCUT ACTIONS
+HomeSpaceSettingsContent functions 10078a018 and 10078a710 construct shared rows through 10078a4d8 with action identifiers 0, 1, 2 and 3. Label function 10039375c independently agrees with the mapping.
+0 Push to talk: “Hold to talk to HeyClicky. Release to send.”
+1 Text mode: “Press to type to HeyClicky instead of talking.”
+2 Dictate: “Hold and speak. Release to insert what you said at your cursor.”
+3 Hands-free dictation: “Dictate without holding a key down. Press to start, press again to stop.”
+
+This establishes the user-facing distinction between asking the assistant and inserting dictated text, and between held and toggled recording. These strings describe intended behavior; they do not alone establish capture timing, transcription success, insertion destination preservation or delivery guarantees. They also do not identify default key combinations. In particular, do not conflate hands-free dictation with an always-listening assistant conversation.
+
+CHANGING SHORTCUTS AND CONFLICT FEEDBACK
+Row-related view builder 10078e7d0 constructs Change with callback 100858f34 -> 10078ef98. That action resets local state through 10078b6c8(4) and invokes 10078efdc; the subsequent recorder operation remains to trace. Builder 10078d564 constructs Cancel with callback 100858c10 -> 10078e778. It calls 1003a015c on the object supplied by 100130db8, then resets the same local state. Exact recorder identity and persistence semantics are unresolved.
+
+Builder 10078b950 renders “Already used by [action label]. Pick a different combo.” The label comes from 10039375c, so it identifies one of the four actions above. This is recovered visible conflict feedback, not yet proof of when a collision is detected, whether the old binding is preserved, or whether the error persists while recording. A second action in the editing view reaches 100858e08 -> 10078e438 -> 10078e46c; its label and save behavior remain unresolved.
+
+Evidence: evidence/ux/shortcut-settings-rows.json, shortcut-settings-row-construction.json, shortcut-settings-control-candidates.json, shortcut-settings-actions.json. The control-candidate file contains a bounded adjacent-code scan; incidental settings strings outside the shortcut region were not treated as verified flows.
+
+NEXT QUESTIONS
+Trace Change into recording, accepted/rejected combinations, cancellation and save. Recover actual default/configurable combinations without reading user preferences. Then connect voice/dictation start/stop to visible listening/processing/result/error states, cancellation and insertion recovery. Current copy evidence does not complete these flows.
+
+SHORTCUT EDITING — RECORDER, VALIDATION AND PERSISTENCE LINKED
+Change dispatches by action to 10039f998 / 1003a0084 / 1003a00cc / 1003a0114. Each clears recorder scratch state through 10039f9e0, sets recorder mode 1/2/3/4 respectively, and schedules recordingTimeoutTask through 10039fe14. Cancel calls 1003a015c, which cancels and clears that timeout task, clears scratch state, and sets recorder mode zero. This confirms the object is ClickyHotkeyRecorder. No configuration-saving call occurs in the traced Cancel operation. Timeout duration/outcome remain untraced; descriptor 1031c34b0 resolves to thunk 1003a4324.
+
+The editing action 10078e46c reads the candidate and calls one of four ClickyHotkeyConfiguration setters. A successful return clears conflict state and stops the recorder. A failed return derives an optional conflicting action using 100396cc0 and writes it to the row's local state without calling recorder-stop. The visible conflict message previously recovered names that action. This supports correcting a conflict while remaining in the editing flow. The control label for this apply action still requires decoding.
+
+The configuration setters normalize the candidate and reject conflicts before updating the saved binding. Setter functions: 100397274 (push to talk), 100397670 (text), 100397a64 (dictate), 100397e9c (hands-free). Each accepted changed value updates its property and passes the encoded binding to 100396978, which JSON-encodes it and calls setObject:forKey: on the configuration's userDefaults. An unchanged accepted value returns success without rewriting. Conflict rejection returns false before those writes, preserving the prior binding through this path. Disk persistence success is not separately reported to the UI here.
+
+Hands-free adds validation helper 1003998f4 before collision checking: it requires a nonempty intersection with a specific modifier mask set. Exact supported-key UX and error explanation remain to establish; not every failed save necessarily identifies a conflicting action. Do not infer the same validation rules for held modes.
+
+Evidence: evidence/ux/shortcut-edit-operation.json, shortcut-validation-and-recording.json and shortcut-conflict-and-timeout.json. These advance the earlier unresolved recorder/persistence items; default combinations, recording event capture, timeout feedback and actual voice/dictation behavior remain open.
+
+SHORTCUT RECORDING TIMEOUT — SEVEN SECONDS, ONLY WITHOUT A CANDIDATE
+Timeout descriptor 1031c34b0 -> thunk 1003a4324 -> 1003a3540 -> 1003a35dc sleeps for 7,000,000,000 nanoseconds. Continuation 1003a3658 returns to 1003a3704 even after a sleep error; 1003a3704 explicitly checks task cancellation before acting. With a surviving recorder and an uncancelled task, it checks optional candidate getters 10039e3bc and 10039e828. It calls the previously traced Cancel/cleanup operation 1003a015c only when both are absent (optional tag 2). Thus the seven-second timeout does not discard an already captured candidate through this path.
+
+The timeout path contains no call to a configuration setter and no direct explanatory message assignment. This establishes automatic recorder cleanup when no candidate has been captured, not the exact visible return state or an absence of feedback elsewhere. Getter/setter and adjacent field accessors are retained in shortcut-recorder-candidate-fields.json; the two candidate fields share a metadata type reference, so type matching alone must not be used to distinguish their identities.
+
+Evidence: evidence/ux/shortcut-timeout-chain.json and shortcut-recorder-candidate-fields.json, plus shortcut-edit-operation.json. A bounded scan of recorder functions 1003a0200 through 1003a3540 found no direct quoted text in final.c (shortcut-recording-hints.json is empty); encoded strings and view-provided hints remain possible. No live timeout was exercised.
+
+DICTATION FAILURE AND PARTIAL-TEXT RECOVERY
+Start gate 1021c3c50 checks Accessibility before microphone authorization. Missing Accessibility supplies “Enable Accessibility for HeyClicky to use dictation.” to error helper 1021c46c4. Restricted/denied and unknown microphone states supply “Microphone access is needed for dictation.” The undetermined state requests microphone access; the authorized branch calls 1021c4bb4. Request completion behavior and visible settings-navigation controls remain untraced.
+
+Error helper 1021c46c4 retains messages of at most 64 Swift String elements and replaces longer messages with “Dictation failed. Try again”. It sends that value through 1021c35d0, which stores the current optional message and invokes an installed callback. It schedules cleanup after 2.5 seconds. Cleanup 1021d0aec -> 1021d089c clears the message only when the current value still equals the scheduled value; a different newer message survives. Equal repeated messages are not distinguished by a unique identifier in this comparison. The callback-to-visible-surface linkage remains to trace, so this establishes message lifecycle rather than measured on-screen duration.
+
+Failure handler 1021cabd4 selects and trims available partial text. After its session cleanup, nonempty partial text enters a salvage branch; empty text instead invokes the error helper. The salvage branch calls 1021d06c4, which clears the general clipboard and writes plain text. It then invokes an installed notice callback with “Copied to your clipboard” and “Press ⌘V to paste”, before clearing the ordinary error message. The notice copy is initialized by 1021bce18; subtitle bytes at 1032e0510 decode to the paste instruction. Callback registration and exact notch presentation are still open.
+
+Practical recovery behavior supported by code: partial dictated text can be offered for manual paste after failure. Do not call this automatic insertion or guaranteed preservation of every spoken word. The clipboard-write return value is ignored in 1021d06c4, so its confirmation callback is not conditional on verified write success; this is a potential misleading-success edge case, not an observed failure. Existing clipboard contents are cleared in this path.
+
+Evidence: evidence/ux/dictation-error-feedback.json, dictation-error-recovery-helpers.json, dictation-clipboard-notice-copy.json and dictation-clipboard-notice-literal.json. No audio, clipboard operation, permission request or target network call was executed.
+
+CLIPBOARD NOTICE — REGISTERED CALLBACK AND AUTO-HIDE
+Initialization 1021bbbd0 assigns wrapper 1021ceef0 to the dictation controller's callback slot +0x60 (context +0x68), the exact slot invoked by recovery helper 1021d06c4. The wrapper reaches weak-manager callback 1021bda1c -> 1021bdb04, which cancels/clears any old dictationClipboardNoticeAutoHideTask and sets notice state via 101f71a4c. Thus the recovery copy is wired into CompanionManager state, rather than being an unregistered callback possibility.
+
+Notch presentation resolver 10142375c calls 1021bb618. That helper starts an auto-hide task only when a current notice exists and no auto-hide task is already stored. Descriptor 10323a498 -> 1021c1654 -> 1021c107c -> 1021c1150 schedules a six-second sleep. Continuation 1021c127c checks cancellation and compares the saved notice with the current notice using 10005d0fc, which compares both strings. It clears the notice only on equality (or the already-empty case). A changed title/subtitle therefore survives an old timer; the notice producer also cancels the previous task. Timer start is tied to the presentation resolver's call, not proven identical to clipboard-write time.
+
+Explicit cleanup 1021bb338 cancels the task, clears its handle, and clears notice state. The actual close-control callback and exact rendering into NotchDictationClipboardSurface remain to connect; no runtime layout or timing was observed.
+
+Evidence: evidence/ux/dictation-notice-callback-chain.json, dictation-notice-state-producers.json, dictation-notice-lifecycle.json, dictation-notice-timer-chain.json and dictation-notice-timer-trigger.json.
+
+CLIPBOARD NOTICE — NOTCH SURFACE AND CLOSE BUTTON CONFIRMED
+The manual-dismiss path is now tied to NotchDictationClipboardSurface. Metadata accessor 100fda5b4 resolves descriptor 1035a08f8, identified by retained Swift metadata as that exact view. Its button builder 100fdd0f4 installs action 100fdefe0 -> 100fdeeb0 -> 1021bb338. The final helper cancels the auto-hide task and clears notice state; it does not clear or rewrite the system clipboard. Thus closing the notice does not undo the earlier clipboard recovery through this action.
+
+Button label 100fdf130 -> 100fdf010 builds a circular content shape and ZStack. Its content callback 100fe084c -> 100fdf424 constructs the system symbol xmark, establishing an X dismissal affordance. The view metadata also declares _reduceMotion and __countdownRingProgress; exact indicator animation and reduced-motion handling still require tracing before making accessibility or timing claims.
+
+A separate controller-message callback 1021bd2ac calls the same dismissal helper only when its boolean parameter is true, before processing the message. The complete meaning of that parameter and all callers remain unresolved, so do not claim that every dictation status change dismisses the recovery notice.
+
+Evidence: evidence/ux/dictation-notice-dismiss-callers.json, dictation-notice-dismiss-control.json, dictation-notice-label-chain.json and evidence/swift-type-fields.json (descriptor 1035a08f8). No UI or clipboard action was executed.
+
+FIRST MICROPHONE PROMPT — NO AUTOMATIC RESUME IN ITS COMPLETION
+The undetermined-microphone branch in 1021c3c50 installs 1021c6158 as the permission completion callback. That retained function returns without starting capture, assigning feedback or inspecting the grant result. The branch with authorization already granted separately invokes 1021c4bb4. Consequently, this prompt's completion does not itself resume the interrupted dictation attempt. A fresh invocation of the start gate can enter the authorized path after approval. Other observers could affect overall app behavior; none is established here, so do not claim all permission flows require a retry. UX gap to verify: whether the app explains that the original attempt did not start.
+
+STARTING DICTATION CLEARS AN OLD CLIPBOARD NOTICE
+Capture-start helper 1021c4bb4 publishes “Dictating” through 1021c35d0 with its boolean argument true. Initialization 1021bbbd0 installs 1021ceedc at the same controller callback slot +0x40 consumed by 1021c35d0. That wrapper calls 1021bd2ac, whose true branch invokes the notice cleanup 1021bb338. Thus the recovered Dictating status clears a prior clipboard notice and its timer. This narrows the previously unnamed boolean behavior for this specific caller without claiming every status update does the same. Clearing the notice still does not clear recovered clipboard text. Actual microphone-start success and complete recording UI remain unverified.
+
+Evidence: evidence/ux/dictation-permission-and-capture-start.json, dictation-status-callback-link.json, dictation-notice-callback-chain.json and dictation-notice-dismiss-callers.json. Permission callback bytes are also retained in dictation-permission-callback-bytes.json as a bounded raw excerpt. No permission prompt or microphone operation was executed.
+
+COMPLETED DICTATION — INSERTION FALLBACK ALSO USES CLIPBOARD
+Result handler 1021c8910 calls the same copy-and-notice helper 1021d06c4 in multiple insertion-fallback branches. Its internal reason strings include secure_field, no_focus_target and ax_permission. Those identifiers are diagnostics, not visible reason labels. The visible recovery notice is the already traced “Copied to your clipboard / Press ⌘V to paste”. Therefore this notice is not limited to salvaging partial text after transcription failure; completed dictated text can also take the manual-paste route.
+
+One branch supplies “Enable Accessibility for HeyClicky to insert dictation.” through the callback at controller slot +0x30, then copies the text and records ax_permission. Insertion helper 1027d91f0 independently checks AXIsProcessTrusted before attempting insertion, confirming an insertion-time permission guard in addition to the start-time guard. The full result-enum encoding, callback +0x30 presentation, secure-field detection and missing-focus selection still require verification; reason labels alone are insufficient to define all triggering conditions.
+
+Important scope distinction: source function 1021c8910 handles an available text result. This inspection does not yet establish how releasing a held shortcut, toggling hands-free mode, Escape cancellation, or an extremely short recording reaches it. Those start/stop questions remain open.
+
+Evidence: evidence/ux/dictation-stop-copy-candidates.json (retains full 1021c8910) and dictation-insertion-result-helper.json, together with the previously traced clipboard notice helpers. No text insertion or clipboard action was performed.
+
+DICTATION SHORTCUT EVENTS AND HANDS-FREE TRANSITIONS
+Initialization 1021bbbd0 subscribes on the main Dispatch queue to separate dictation transition and hands-free toggle publishers, retaining dictationShortcutTransitionCancellable and handsFreeDictationToggleCancellable. Transition callback 1021cef18 -> 1021be880 -> 1021be940 ignores case 0; case 1 passes a tutorial-related gate 102246ce8 before invoking 1021bf738; other nonzero cases invoke 1021bfefc. The event enum's producer still needs mapping before calling these values exact key-down/key-up cases.
+
+Hands-free callback 1021cef28 -> 1021bedc4 checks tutorial predicate 102240800, then invokes controller operation 1021befcc when allowed. That operation branches on mode at controller +0x1e8. From mode 0 it runs the previously traced permission/start gate, and only if recording becomes active sets mode 2 and publishes “Dictating (hands-free)”. From mode 1 it cancels pendingQuickTapFinishWorkItem, clears holdPressStartTime, sets mode 2 and publishes the same status. This supports conversion from held capture to hands-free without starting another capture through that branch. From the remaining active mode it sets mode 0 and invokes 1021c36f0.
+
+Shared finish operation 1021c36f0, when its recording guard is true, publishes “Transcribing” before subsequent asynchronous finishing work. Thus the mode transition is not an immediate promise of inserted text. Exact capture shutdown, service completion and result delivery still require connecting. Status string initialization 1021c3508 confirms the explicit hands-free label.
+
+The transition-side handler 1021bfefc contains special handling below 0.08 seconds and a separate 0.4-second comparison, with pending work items. Their complete purpose/outcome remains unresolved. Do not simplify the held path to unconditional immediate finish on every release, or infer a minimum accepted recording duration from these constants alone.
+
+Evidence: evidence/ux/dictation-shortcut-event-chain.json, dictation-held-and-toggle-operations.json and dictation-handsfree-status-copy.json; subscription setup remains in dictation-notice-callback-chain.json (1021bbbd0). All static inspection; no keyboard or audio input.
+
+SHORT RELEASE, SECOND PRESS AND HANDS-FREE LOCK
+The controller pair 1021bf738 / 1021bfefc now establishes the short-press behavior beyond isolated constants. In the held mode, release computes time since holdPressStartTime (missing timestamp defaults to 1.4 seconds). Below 0.08 seconds, if no bounce-release work is pending, it schedules an 0.08-second retry via 1021cf240 -> 1021c4198; that callback clears the pending slot and re-enters the release handler. A new press while that bounce work is pending cancels it and returns, preserving the current capture instead of treating the bounce as a fresh gesture.
+
+After that handling, releases shorter than 0.4 seconds can schedule pendingQuickTapFinishWorkItem with a 0.4-second delay, but only if isDedicatedHandsFreeShortcutConfigured is false and isOnboardingTutorialActive returns false. Otherwise release clears the mode and calls shared finish 1021c36f0 immediately. Delayed callback 1021cf1dc -> 1021c4278 clears the pending slot and mode, then finishes. These thresholds describe input handling, not a minimum usable speech length.
+
+If another press arrives while the quick-tap finish is pending, 1021bf738 cancels that work item, clears the held-press timestamp, switches mode to 2, and publishes “Dictating (hands-free)”. That is the controller's double-tap-to-hands-free route. A later press in mode 2 stops through shared finish and sets shouldIgnoreNextReleaseAfterLockStop; the following release consumes and clears that flag, preventing duplicate finishing. A press in idle starts through the permission gate and records holdPressStartTime only if recording became active.
+
+Metadata provides a matching ShortcutTransition enum (1035ab46c) with none, pressed, released. The subscription's exact generic type binding remains to verify before calling enum-order evidence alone a proof of the numeric producer mapping. The handler behavior and named pending-work fields support the press/release interpretation; low-level physical key recognition remains a separate gap. No live timing was measured.
+
+Evidence: evidence/ux/dictation-held-and-toggle-operations.json, dictation-short-press-callbacks.json, dictation-shortcut-event-chain.json and evidence/swift-type-fields.json. This resolves the earlier open 0.08/0.4-second branch semantics at the controller level.
+
+ESCAPE — CANCELS ACTIVE DICTATION, DOES NOT USE NORMAL FINISH
+Shared Escape router 1021df1d8 reaches controller handler 1021cc494 after earlier takeover/guidance and other priority checks. When controller recording flag +0x1d8 is true, this handler invokes 1021cc128 and reports the event handled. When false it reports unhandled. Therefore the statement applies when Escape reaches this active-dictation branch, not to every Escape anywhere in the app.
+
+Cancellation 1021cc128 increments session value +0x1e0; cancels and clears pending controller work; invokes microphone cleanup 101c1a7e4; calls transcriber cleanup 1027d84c0 when present; clears capture/focus context; sets recording false; resets mode and gesture timers through 1021c438c; and clears the current status message. The gesture cleanup cancels both pendingQuickTapFinishWorkItem and pendingBounceReleaseWorkItem, resets holdPressStartTime and the ignore-release flag. This path does not call normal finish 1021c36f0, insertion handler 1021c8910, or clipboard-recovery helper 1021d06c4. Do not describe Escape cancellation as submitting the dictation or salvaging it to the clipboard.
+
+Microphone helper 101c1a7e4 clears its captured-audio handler and buffer/converter state and schedules capture-session cleanup; actual device shutdown completion remains to trace. No claim is made that previously streamed audio is retracted.
+
+Late-result protection is present in 1021c8910: it compares the supplied session value with current controller +0x1e0 and returns immediately on mismatch before processing/inserting text. Because cancellation increments that value, an old result reaching this handler is discarded. This verifies the guard on this result path, not every possible asynchronous callback or a result already inserted before cancellation.
+
+Evidence: evidence/ux/dictation-escape-cancel.json, video-escape-confirmation-callers.json (1021df1d8), and dictation-stop-copy-candidates.json (1021c8910). All inspection offline; no Escape key or microphone action executed.
+
+EMPTY RESULT — CLEANUP WITHOUT INSERTION OR CLIPBOARD REPLACEMENT
+After accepting the session value, result handler 1021c8910 calls cleanup 1021cd9e0, trims surrounding whitespace/newlines from the result, and checks whether the trimmed string is empty. Empty text clears the status through 1021c35d0 and returns before insertion, clipboard fallback, or the later nonempty-result timestamp write. This handler does not emit a “no speech” error for that branch. Empty transcription is not proof that the person was silent: the source result could be empty for other reasons.
+
+Cleanup 1021cd9e0 increments the session value, cancels pending controller work, invokes microphone/transcriber cleanup, clears active session references, sets recording false, and resets input mode and gesture timers through 1021c438c. Thus empty results finish the controller session rather than leaving its recording flag active. This still does not measure physical microphone shutdown latency.
+
+Evidence: evidence/ux/dictation-stop-copy-candidates.json (1021c8910), dictation-result-cleanup.json and dictation-escape-cancel.json (shared microphone cleanup). The early empty branch has no clipboard write, so prior clipboard contents remain untouched through this branch.

@@ -1,0 +1,547 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1CFF62E72EE6393E56D2B498 /* Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70DA817A936D0A04882C1F93 /* Focus.swift */; };
+		2279682AF30356573EB3ED81 /* CaptureRing.c in Sources */ = {isa = PBXBuildFile; fileRef = C1D6F9CBB6EDAF4AEC85CBE4 /* CaptureRing.c */; };
+		251439F6DB33269D60D2A4E9 /* CaptureRing.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = A8B17AFDC5D3D1644C82B8D0 /* CaptureRing.h */; };
+		28ACC0B24F881020B961C745 /* libCaptureRing.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 960EA941E7CBE70FB6345B39 /* libCaptureRing.a */; };
+		41FB40A41F19F492F7633FF4 /* GeminiTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B79C8989A7C557ACD48C0A8 /* GeminiTranscriber.swift */; };
+		4445425E8645B448D55F1CAE /* Inserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD83827AD88232DF7DD5CC3F /* Inserter.swift */; };
+		7D928A8C50D90EED29F98943 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E50993135C61B9D74B6263F /* SettingsView.swift */; };
+		8C27D2169849ED31A7C2FE78 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D0682A909B728B9BC26DA7 /* Telemetry.swift */; };
+		8FB38202555EE6FE396E5E56 /* AudioCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB1C95E5C3A72E162D414E4 /* AudioCapture.swift */; };
+		AC87475F59529DB13539DAD1 /* module.modulemap in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3981599795410912C0B884B9 /* module.modulemap */; };
+		C3F1FAE4F64387755E7AAFC5 /* StreamingTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B003384A3304C3FEC15375 /* StreamingTranscriber.swift */; };
+		E81FBAA2D949EA6E045AF89B /* Overlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F764A26409E45598F9D853 /* Overlay.swift */; };
+		F028EFE58382219B3A236D20 /* ComputaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D29712628D1D562CEFD262 /* ComputaApp.swift */; };
+		F1437559979920FF6050921D /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C40328FEB1159DE0607E28 /* Hotkey.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E0D7F4CDEEDF7C45B7B58440 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D055D2E069CB170A525C40C0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 969185596AB48B045AB5FE80;
+			remoteInfo = CaptureRing;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FD5144D1D6D30EB5C3A2CBEC /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+				251439F6DB33269D60D2A4E9 /* CaptureRing.h in CopyFiles */,
+				AC87475F59529DB13539DAD1 /* module.modulemap in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		09D0682A909B728B9BC26DA7 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telemetry.swift; sourceTree = "<group>"; };
+		3981599795410912C0B884B9 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
+		3E50993135C61B9D74B6263F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		47BE0AAF16DB1F54D70E5313 /* Computa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Computa.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		52C40328FEB1159DE0607E28 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
+		5FB1C95E5C3A72E162D414E4 /* AudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCapture.swift; sourceTree = "<group>"; };
+		70DA817A936D0A04882C1F93 /* Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Focus.swift; sourceTree = "<group>"; };
+		85B003384A3304C3FEC15375 /* StreamingTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTranscriber.swift; sourceTree = "<group>"; };
+		8B79C8989A7C557ACD48C0A8 /* GeminiTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTranscriber.swift; sourceTree = "<group>"; };
+		960EA941E7CBE70FB6345B39 /* libCaptureRing.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libCaptureRing.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A8B17AFDC5D3D1644C82B8D0 /* CaptureRing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CaptureRing.h; sourceTree = "<group>"; };
+		C1D6F9CBB6EDAF4AEC85CBE4 /* CaptureRing.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = CaptureRing.c; sourceTree = "<group>"; };
+		D9F764A26409E45598F9D853 /* Overlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Overlay.swift; sourceTree = "<group>"; };
+		E6D29712628D1D562CEFD262 /* ComputaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputaApp.swift; sourceTree = "<group>"; };
+		FD83827AD88232DF7DD5CC3F /* Inserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Inserter.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F712870A148917BCB4742C18 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				28ACC0B24F881020B961C745 /* libCaptureRing.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02B5A29C8E1EE5A18F79029D /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				5FB1C95E5C3A72E162D414E4 /* AudioCapture.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+		091617A2E69F9C7B384AE3A0 /* Telemetry */ = {
+			isa = PBXGroup;
+			children = (
+				09D0682A909B728B9BC26DA7 /* Telemetry.swift */,
+			);
+			path = Telemetry;
+			sourceTree = "<group>";
+		};
+		34FAC5BEC28E70753E88A4CA /* Insert */ = {
+			isa = PBXGroup;
+			children = (
+				FD83827AD88232DF7DD5CC3F /* Inserter.swift */,
+			);
+			path = Insert;
+			sourceTree = "<group>";
+		};
+		3937224C7FA3C72D185F8439 /* Context */ = {
+			isa = PBXGroup;
+			children = (
+				70DA817A936D0A04882C1F93 /* Focus.swift */,
+			);
+			path = Context;
+			sourceTree = "<group>";
+		};
+		3D655DDEDBE5C3A90D0F250C /* Overlay */ = {
+			isa = PBXGroup;
+			children = (
+				D9F764A26409E45598F9D853 /* Overlay.swift */,
+			);
+			path = Overlay;
+			sourceTree = "<group>";
+		};
+		69177A06EA961C8C71410AFE /* Computa */ = {
+			isa = PBXGroup;
+			children = (
+				E1E3347A1894340EA3B9D0B4 /* App */,
+				02B5A29C8E1EE5A18F79029D /* Capture */,
+				3937224C7FA3C72D185F8439 /* Context */,
+				EFAB02F53735ABE2C547BFC0 /* Hotkey */,
+				34FAC5BEC28E70753E88A4CA /* Insert */,
+				3D655DDEDBE5C3A90D0F250C /* Overlay */,
+				EA27994410E4BB1B0272F4E2 /* Stream */,
+				091617A2E69F9C7B384AE3A0 /* Telemetry */,
+			);
+			name = Computa;
+			path = Sources/Computa;
+			sourceTree = "<group>";
+		};
+		6EAC029DFEB4D2B9FD99091C /* CaptureRing */ = {
+			isa = PBXGroup;
+			children = (
+				C1D6F9CBB6EDAF4AEC85CBE4 /* CaptureRing.c */,
+				AD07BF2E8876F33C23483ECB /* include */,
+			);
+			name = CaptureRing;
+			path = Sources/CaptureRing;
+			sourceTree = "<group>";
+		};
+		97EF62DB5223B8B6D097899F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				47BE0AAF16DB1F54D70E5313 /* Computa.app */,
+				960EA941E7CBE70FB6345B39 /* libCaptureRing.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AD07BF2E8876F33C23483ECB /* include */ = {
+			isa = PBXGroup;
+			children = (
+				A8B17AFDC5D3D1644C82B8D0 /* CaptureRing.h */,
+				3981599795410912C0B884B9 /* module.modulemap */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		CCB030B17F395216FEDD07EB = {
+			isa = PBXGroup;
+			children = (
+				6EAC029DFEB4D2B9FD99091C /* CaptureRing */,
+				69177A06EA961C8C71410AFE /* Computa */,
+				97EF62DB5223B8B6D097899F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E1E3347A1894340EA3B9D0B4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E6D29712628D1D562CEFD262 /* ComputaApp.swift */,
+				3E50993135C61B9D74B6263F /* SettingsView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		EA27994410E4BB1B0272F4E2 /* Stream */ = {
+			isa = PBXGroup;
+			children = (
+				8B79C8989A7C557ACD48C0A8 /* GeminiTranscriber.swift */,
+				85B003384A3304C3FEC15375 /* StreamingTranscriber.swift */,
+			);
+			path = Stream;
+			sourceTree = "<group>";
+		};
+		EFAB02F53735ABE2C547BFC0 /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				52C40328FEB1159DE0607E28 /* Hotkey.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		969185596AB48B045AB5FE80 /* CaptureRing */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E3D5AA2911C174421D3142C4 /* Build configuration list for PBXNativeTarget "CaptureRing" */;
+			buildPhases = (
+				FD5144D1D6D30EB5C3A2CBEC /* CopyFiles */,
+				4799FA092D6081AE124E9781 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CaptureRing;
+			packageProductDependencies = (
+			);
+			productName = CaptureRing;
+			productReference = 960EA941E7CBE70FB6345B39 /* libCaptureRing.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		99E9D2F0C52A8B8FC94AA89C /* Computa */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 49D3BC66F835916866818B28 /* Build configuration list for PBXNativeTarget "Computa" */;
+			buildPhases = (
+				611ACEFF472E095773D0F5F8 /* Sources */,
+				F712870A148917BCB4742C18 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A928D96F167ADD55772B5E6A /* PBXTargetDependency */,
+			);
+			name = Computa;
+			packageProductDependencies = (
+			);
+			productName = Computa;
+			productReference = 47BE0AAF16DB1F54D70E5313 /* Computa.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D055D2E069CB170A525C40C0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					969185596AB48B045AB5FE80 = {
+						DevelopmentTeam = V5W4LV96XX;
+					};
+					99E9D2F0C52A8B8FC94AA89C = {
+						DevelopmentTeam = V5W4LV96XX;
+					};
+				};
+			};
+			buildConfigurationList = 6165D2D4E1633500441B68A2 /* Build configuration list for PBXProject "Computa" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = CCB030B17F395216FEDD07EB;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 97EF62DB5223B8B6D097899F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				969185596AB48B045AB5FE80 /* CaptureRing */,
+				99E9D2F0C52A8B8FC94AA89C /* Computa */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4799FA092D6081AE124E9781 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2279682AF30356573EB3ED81 /* CaptureRing.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		611ACEFF472E095773D0F5F8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8FB38202555EE6FE396E5E56 /* AudioCapture.swift in Sources */,
+				F028EFE58382219B3A236D20 /* ComputaApp.swift in Sources */,
+				1CFF62E72EE6393E56D2B498 /* Focus.swift in Sources */,
+				41FB40A41F19F492F7633FF4 /* GeminiTranscriber.swift in Sources */,
+				F1437559979920FF6050921D /* Hotkey.swift in Sources */,
+				4445425E8645B448D55F1CAE /* Inserter.swift in Sources */,
+				E81FBAA2D949EA6E045AF89B /* Overlay.swift in Sources */,
+				7D928A8C50D90EED29F98943 /* SettingsView.swift in Sources */,
+				C3F1FAE4F64387755E7AAFC5 /* StreamingTranscriber.swift in Sources */,
+				8C27D2169849ED31A7C2FE78 /* Telemetry.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A928D96F167ADD55772B5E6A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 969185596AB48B045AB5FE80 /* CaptureRing */;
+			targetProxy = E0D7F4CDEEDF7C45B7B58440 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		19DAAC5275B9C6AACDB99091 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = V5W4LV96XX;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		44D8F88227E7F3888AAC593A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Computa.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.computa.app;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Sources/CaptureRing/include";
+			};
+			name = Debug;
+		};
+		7C90C1F72CCAE507378FDFD6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = V5W4LV96XX;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A51A15CC3FBC904EEF495D0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/Computa.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.computa.app;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Sources/CaptureRing/include";
+			};
+			name = Release;
+		};
+		AAFE4B1BFAF34E7D27859A4E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/CaptureRing/include";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MODULEMAP_FILE = Sources/CaptureRing/include/module.modulemap;
+				PRODUCT_MODULE_NAME = CaptureRing;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		B78B90C7B2BDE764E69B5C06 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/Sources/CaptureRing/include";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MODULEMAP_FILE = Sources/CaptureRing/include/module.modulemap;
+				PRODUCT_MODULE_NAME = CaptureRing;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		49D3BC66F835916866818B28 /* Build configuration list for PBXNativeTarget "Computa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				44D8F88227E7F3888AAC593A /* Debug */,
+				A51A15CC3FBC904EEF495D0A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6165D2D4E1633500441B68A2 /* Build configuration list for PBXProject "Computa" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C90C1F72CCAE507378FDFD6 /* Debug */,
+				19DAAC5275B9C6AACDB99091 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E3D5AA2911C174421D3142C4 /* Build configuration list for PBXNativeTarget "CaptureRing" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAFE4B1BFAF34E7D27859A4E /* Debug */,
+				B78B90C7B2BDE764E69B5C06 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D055D2E069CB170A525C40C0 /* Project object */;
+}

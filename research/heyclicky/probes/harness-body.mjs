@@ -1,0 +1,25 @@
+// Extract only pure body-packing functions. Never import or execute the bundle.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import assert from 'node:assert/strict';
+const source=readFileSync(new URL('../evidence/harness-bundle.js',import.meta.url),'utf8');
+const start=source.indexOf('var b2=8192,i_=!1,');
+const end=source.indexOf('var ff=',start);
+assert(start>=0&&end>start);
+const {pack,note}=new Function('B2',source.slice(start,end)+';return {pack:o_,note:a_};')(gzipSync);
+const original=JSON.stringify({text:'x'.repeat(10000)});
+assert.equal(pack(original).headers['Content-Encoding'],undefined);
+note({headers:new Headers({'x-clicky-accepts-gzip':'1'})});
+const compressed=pack(original);
+assert.equal(compressed.headers['Content-Encoding'],'gzip');
+assert.equal(gunzipSync(compressed.body).toString(),original);
+const cases=[String.raw`{"text":"\ud83d\ude00"}`,JSON.stringify({text:'😀'}),String.raw`{"text":"\\ud83d"}`];
+const results=cases.map(input=>({input,output:pack(input).body}));
+assert.equal(JSON.parse(results[0].output).text,'��');
+assert.equal(JSON.parse(results[1].output).text,'😀');
+assert.equal(JSON.parse(results[2].output).text,String.raw`\ud83d`);
+note({headers:new Headers()});
+assert.equal(pack(original).headers['Content-Encoding'],undefined);
+const evidence={scope:'Isolated exact source body-packing functions, synthetic input, no network or account state',sourceCharacterRange:[start,end],results,gzipInputBytes:Buffer.byteLength(original),gzipOutputBytes:compressed.body.length,checksPassed:7};
+writeFileSync(new URL('../evidence/harness-body-probe.json',import.meta.url),JSON.stringify(evidence,null,2));
+console.log(JSON.stringify(evidence));

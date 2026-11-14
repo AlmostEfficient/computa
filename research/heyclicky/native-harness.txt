@@ -1,0 +1,58 @@
+NATIVE HARNESS LAUNCH — PARTIAL GHIDRA TRACE
+Source: evidence/ghidra-main/partial.c and partial-index.json. Selected complete function chunks retained in harness-launch-candidates.json. Decompiled Swift async functions have unresolved registers and indirect-jump warnings; conclusions below are limited to explicit calls/literals. No app/helper execution.
+
+FUN_1000259a0 sets up async state and UUID/URL-related metadata, dispatching to FUN_100025bd4. The latter accesses NSProcessInfo.environment, constructs UUID strings with hyphens replaced by empty strings, prepares a PATH containing Homebrew/local/system locations and home-relative .local/bin and .local/share/mise/shims, and sets CLICKY_HARNESS_TOKEN and CLICKY_HARNESS_STATE in the environment passed to the child. This directly correlates native launch configuration with the extracted JavaScript runner's environment variable names. Exact token concatenation, PATH precedence and environment filtering still need lower-level confirmation.
+
+FUN_100025bd4 builds child/pipe objects and assigns callbacks FUN_10002c078 and FUN_10002c6ac, then enters a startup continuation FUN_100027240. The continuation logs runner availability on 127.0.0.1 with a port and executable path and calls FUN_100004c50 with port-related state. The JSON readiness parser and timeout mechanism remain to be traced before claiming complete handshake recovery.
+
+FUN_100025178 handles startup failure, builds localized error output, and passes agent_harness / runner_start_failed / runner_start labels into FUN_101c5014c. This is an address-backed diagnostic call, not proof which telemetry service receives it or that it ran during this investigation.
+
+Next: resolve Objective-C stubs/setters, environment filter FUN_10002aec0/10002aa60, stdout callback and readiness continuation, then request serialization and event cursor logic. Snapshot coverage is partial and native data types are reconstructed, not original source.
+
+ENVIRONMENT FILTER AND DIAGNOSTIC CALLBACK
+FUN_10002aa60 returns false for prefixes DYLD_, __XPC_DYLD_, GPUTOOLS_, MTLCAPTURE_, MTLREPLAYER_, MTL_DEBUG_LAYER, and exact keys METAL_LOAD_INTERPOSER / __XCODE_BUILT_PRODUCTS_DIR_PATHS; otherwise true. These are case-sensitive Swift prefix/equality calls. The surrounding launch code applies this predicate through dictionary filtering before setting the child environment. This removes selected injection/debug variables; it is not the JavaScript connector's credential-prefix filter and does not prove general secret removal.
+
+FUN_10002c078 reads FileHandle.availableData, attempts UTF-8 decoding, splits that chunk by newline, skips empty subsequences, and prints each line with a harness-runner prefix clipped to 600 characters. It has no JSON parsing or retained cross-chunk buffer visible. It is a diagnostic callback, so the earlier stdout label was premature: exact stderr/stdout binding must be resolved from launch setters before assigning a stream. A split UTF-8 sequence can fail decoding at this callback boundary; actual pipe fragmentation was not tested.
+
+Startup continuation closure FUN_10002d270 delegates to FUN_10002cc30 with captured state; readiness parsing should be traced there. Selected filter/callback source is retained in evidence/ghidra-main/harness-filter-callbacks.json. The decompiled signatures contain unresolved captured-register context, so stream identity and async ordering remain explicitly uncertain.
+
+READINESS HANDSHAKE RECOVERED (STATIC)
+FUN_10002cc30 constructs AgentHarnessReadyLineReader, installs readability callback FUN_100043588 → FUN_10002d2c4 → FUN_10002d348 on a pipe's read handle, then calls launchAndReturnError_. It schedules a global-queue asyncAfter deadline using double bit pattern 0x4034000000000000 (20 seconds). Timeout callback FUN_10004364c → FUN_10002e12c reports 'The agent harness runner didn't start within 20 s.' The timeout's one-shot completion helper still needs full audit.
+
+FUN_10002d348 locks the reader, ignores input after its continuation is absent, appends nonempty Data to an instance buffer, and searches for LF byte 10. With no LF it retains the buffer for the next callback. The first complete line is parsed via NSJSONSerialization, cast to dictionary, and its port value dynamically cast to Swift Int. On success it resumes the continuation with that integer. On parse/type/missing-port failure it resumes with an error containing up to 300 decoded characters of the line. Then it clears the continuation. It does not scan later lines for a valid readiness record in this path.
+
+No ready=true check or port range check is visible in this reader; those may exist downstream. This matches the JavaScript runner's newline-delimited {ready:true,port} output, but native acceptance is based on port here. The reader buffers bytes before decoding JSON, unlike the separate diagnostic callback's per-chunk UTF-8 conversion. No explicit accumulated-buffer size limit appears in this function; the 20s timer bounds the wait, not necessarily memory. No malformed input was sent to the real app.
+
+Evidence/harness-readiness.json retains initial constructor/timeout/callback source; complete parser remains address-indexed in partial.c. Native process cleanup on timeout, exact pipe binding and downstream port validation remain open.
+
+ONE-SHOT READINESS COMPLETION
+FUN_10002dee0 acquires the same reader lock as the data parser, checks optional continuation, resumes it throwing only if present, clears it, then unlocks via FUN_10002ec90. Parser success/failure similarly clears under the lock. This supports one-shot completion across readiness and timeout/error callbacks. The timeout is still scheduled after launch; a late timer finds no continuation and does not resume it again. No process termination or pipe-handler clearing occurs in this helper itself; outer cleanup remains to be traced.
+
+FUN_100004c50 currently decompiles as a bare return despite callers supplying values; this is likely an artifact of Swift ABI/type reconstruction and must not be interpreted as meaningful validation. No downstream port-range validation has been established. Keep that uncertainty rather than inferring it from a named/nearby getter.
+
+NATIVE EVENT POLLING — ADDRESS-BACKED CORRELATION
+The second export snapshot locates routes: initial /events?job=...&after=0&wait=0 at FUN_10002f5c4, /turn at FUN_10002f8d8, post-turn polling setup FUN_100030fac, repeated event handling FUN_1000317dc, /prewarm FUN_10003c578, /steer FUN_10003d284 and /cancel FUN_10003e4d0. Literal route index retained in evidence/ghidra-main/harness-route-index.json.
+
+FUN_100030fac reads the turn response's after and turnRef, then constructs /events?job=<encoded>&after=<cursor>&wait=20000. FUN_1000317dc iterates returned events and advances cursor with max(previous cursor, event.seq), using the previous cursor when seq cannot be cast to Int. It does not advance to response.latest in this loop. Thus the outer runner's 400-event page cap does not by itself demonstrate skipped events in this native consumer. Earlier generic warning about consumers using latest is a contract concern, not an established app bug.
+
+After cursor advancement, an event with a present string turnRef different from the expected turn is skipped. Missing/unparseable turnRef is not rejected by that comparison. Matching events pass to FUN_100035ab8, whose return can end the polling loop. Initial pre-turn code references latest separately; its precise baseline handling still needs trace. Selected complete functions retained in harness-polling.json; no polling requests sent.
+
+NATIVE HTTP TRANSPORT
+FUN_100032e7c builds URL text starting http://127.0.0.1: with runner port and route, rejects invalid URL with 'Bad runner route.', assigns HTTP method, explicitly sets timeoutInterval to 60s (double 0x404e000000000000), and adds Authorization: Bearer <runner token>. For a body it sets application/json and serializes via NSJSONSerialization before URLSession.data(for:delegate:). This is the local runner token, not proof of backend session-token handling. No request executed.
+
+FUN_100033980 parses response data through NSJSONSerialization and checks NSHTTPURLResponse.statusCode equals exactly 200. Other statuses enter an error path using response error content or a fallback 'The agent harness runner answered ...' message. Thus this caller does not treat every 2xx status as success. Full malformed/empty response fallback still needs tracing. Native 60s request timeout is distinct from server long-poll wait=20000 and 20s startup deadline.
+
+FUN_100034e68 serializes integration descriptors with HTTP name/url/token/headers/meta and local name/command/args/env branches. It includes x-codex-turn-metadata, thread_id and turn_id literals. This correlates native integration data with the harness's HTTP/local-MCP conversion, but conditions for including identity/header fields need fuller dataflow tracing. Retained source: evidence/ghidra-main/harness-http.json.
+
+NATIVE EVENT DISPATCH
+FUN_100035ab8 (67543 bytes of pseudocode retained as evidence/ghidra-main/event-dispatch.c) compares event kind and translates commentary, thinking, tool, batch, answer, stats, turn_end, note, apps_unreachable, compacted, tools_listed and log. This is the outer runner event vocabulary, distinct from inner H1 events. Many branches invoke an internal callback with reconstructed enum storage; final UI behavior needs its consumer trace.
+
+The turn_end branch reads status as String, defaults missing/unparseable status to completed, reads optional error text, passes the terminal event to the callback, and returns 1. This explains the polling loop's stop condition. A malformed terminal event can therefore default to completed at this decoder boundary; no such live event was observed. Other listed event branches do not alone establish task completion.
+
+Tool branch reads id/name/server/command/phase/url and special-cases web_search/fetch_url; note branch distinguishes preview and requires a path-like field (literal still encoded as DAT_1032be980 in this export). Raw Swift enum discriminants are not yet assigned semantic names without metadata correlation. Routine events are not among the visible string branches here, so the previously recovered legacy <ROUTINE> final-text path remains important to trace rather than assuming this dispatcher commits schedules.
+
+EXPORT COVERAGE UPDATE
+Existing endgame PID 8927 verified live at elapsed 42:46, CPU 42:19, RSS 2388560 KiB. Export had grown to about 36 MiB. Retained immutable first 36700160 bytes as partial-03.c, SHA256 becdcd4b0110dea7f3accd6af34256bdd38bec726a076402e980469524d982ce. Index records 25327 function headers, six explicit failures, 8348 warning markers; last function may be cut off. Counts measure export text, not completeness or correctness. Failed addresses: 1001d5df8, 100368f60, 100370b0c, 10040b6b4, 1004466fc, 1004ddbc0. Existing job was not restarted.
+
+FINAL EXPORT RETRIEVED
+Endgame job completed: process 8927 absent, tmux session ended, log reports post-analysis/save/import succeeded and final output path. Copied final.c and final-job.log locally. Remote and local SHA256 match: 37d2ba7bd1b23ee162813c9112990f9b0e9c22a1b452c2696e8b251257432e55. Size 182735190 bytes. final-index.json counts 130417 function headers, 42 explicit failures, 54945 warning markers; final-failures.json retains failed entries. These include analyzer-generated candidates and do not establish true function count or semantic correctness. Investigation and failure review remain incomplete.

@@ -1,0 +1,14 @@
+HARNESS IMAGE INPUT — STATIC TRACE AND PURE BUDGET PROBE
+Source evidence/harness-bundle.js ~389600–394950. No user images read, no image processor executed, no network requests.
+
+Dimensions are counted in 32x32 patches, with preferred budget 16000 patches. B$ shrinks proportionally then reduces scale by 2% until rounded patch count fits. Manual header parsing recognizes PNG, GIF, JPEG and WebP variants. It is a limited header reader, not full image validation.
+
+ll decodes base64 and checks dimensions/byte length. Unknown dimensions pass through unchanged. Recognized images fitting patch budget and <=8MiB pass through. Otherwise _ attempts Photon WASM processing, EXIF orientation, triangle resize and encoding. JPEG output uses quality 85; other inputs initially encode PNG, switching to JPEG if >4MiB. If only the byte threshold was exceeded, transformed data is selected only when smaller; no unconditional maxBytes rejection exists. If patch budget is exceeded and processing fails, up to 30000 patches still pass; beyond that an omission note replaces the image. The patch and byte numbers are conditional targets, not universal hard caps.
+
+Scaled-image explanatory text reports original/shown dimensions and a coordinate multiplier from width ratio rounded to two decimals. Rounding, aspect changes and EXIF orientation may matter to consumers; native/browser coordinate correlation remains unverified.
+
+Yp caches by SHA256 of base64 text plus text length. It retains 24 changed/dropped results with LRU ordering and 4096 unchanged identities. MIME is not part of the cache key, so identical data presented with differing MIME can reuse the earlier transformed result. dl resolves h1blob references, adds scaling/omission notes and then applies request-level Pp.
+
+Pp defaults to 16000000 data-URL characters across input images (not decoded bytes). Above that budget it computes a rounded removal target in half-budget chunks, removes only a contiguous prefix of images fitting inside that target, and replaces them with explanatory text. It can leave a request over budget when an image is larger than the target; it is not a strict cap. Six assertions in probes/harness-image-budget.mjs verify exact pure functions using a synthetic budget of 100 characters: [120] stays [120], [60,60] stays [60,60], [30,30,30,30] becomes [30,30,30], [10,120] becomes [120]. No real image payloads were used. Evidence: evidence/harness-image-budget-probe.json.
+
+Outstanding: decoder/EXIF/Photon fixture checks, exact MIME/header failure paths, full local view_image implementation and native screenshot coordinates. The surrounding bundle carries Photon WASM; extraction/module validation and third-party attribution remain incomplete.

@@ -1,0 +1,39 @@
+DRAWING BRIDGE — static source findings
+Source: installed Contents/Resources/clicky-draw-native.js. Identity and lexical API index: evidence/drawing-bridge-index.json.
+
+The shipped adapter implements a small SVG-like DOM and queues render operations. __drainRender (line 302) returns JSON operations, including removal and serialized node updates. Its header describes JavaScriptCore execution and Core Animation rendering; native implementation has not yet corroborated that description.
+
+clickyCanvas.beginStream (line 641) clears existing state, selects ink/scale, creates a stage and a ClickyDraw.live session with external speech timing. feed (681) updates the program and analyzes only completed statements unless done is true. line and lineLength synchronize drawing with speech; finish closes the last speech line and releases queued buttons. This is a concrete separation of program arrival and spoken-line progress.
+
+continueStream (660) retains already-visible marks, drops pending interrupted work through continueTurn, and returns replay code with a __turn marker. state (675) requests drawn-only state capped at 12000 characters. timeline (730) returns speech lines and statement progress, with frames explicitly null.
+
+Card APIs expose marks, geometry and native render-unit IDs; closeCard drops marks, zoomCard validates a three-number transform, and moveCard shifts marks. keepNotesOnly and dropPointing distinguish retained notes from annotations tied to the underlying screen.
+
+Host dependencies include scheduling/cancellation, clock, text/path measurements, caption output, screen ink/luminance/busyness queries, 3D shape dispatch, sound marks and button readiness. These are actual source references; availability of optional hooks is checked in several paths. Native bindings, runtime isolation and serialization compatibility remain unverified.
+
+Next verification: controlled execution of the shipped engine plus adapter with a minimal measurement host; compare render batches, stream continuation and speech timing. Then trace native consumption of those operations.
+
+DRAWING PROGRAM EXECUTION — clicky-draw-engine.js 1052–1116, 1148–1174
+The shipped engine identifies as 1.6 and exports render/live, runCode, Session, statement scanners, layout/pacing and editing APIs. runCode constructs a function around the drawing API; syntax failure searches backward for a complete prefix that parses, and runtime errors preserve marks emitted before the error. Returned marks carry error, says and warnings; live3d holds tick/animation state as a nonenumerable property.
+
+Session incrementally evaluates appended code in a persistent generator scope. A non-prefix update resets state. Incomplete syntax while done=false returns no output and waits; other failures switch to full-prefix replay, recording fellBack. Emitted mark/speech/warning counts govern deltas. Error reporting is deferred until done. These are code semantics, not original source reconstruction from the native binary.
+
+Optional WorkerRunner starts a worker with a default 1500ms watchdog and a cooperative budget at 80% of that limit. Only one job runs at a time; the latest queued prefix replaces older queued work. Watchdog termination is a real worker termination, unlike the browser extension's Promise-race timeout. Worker construction failure returns null; caller fallback and actual native configuration still need tracing.
+
+The native adapter's beginStream supplies speech timing options without sandbox:'worker'. Do not infer worker isolation on that native path from the engine's optional capability. Native JavaScriptCore bindings and execution limits remain open questions.
+
+PACING AND FALLBACK — engine lines 264, 1416–1491, 1615–1618
+Pacer schedules marks against spoken lines. External-speech mode holds a line until a start timestamp arrives; defaults are 80ms lead and 120ms tail, with 2.6 words/sec used for missing end estimates. The engine adjusts stroke duration and gaps to fit available speech time, with speed/slowdown limits and an optional rush bound. Unassigned marks hold subsequent drawing. Reopen clears completed/rushed flags; dropping pending marks affects only unreleased items.
+
+Offline probe probes/pacer.mjs executes the original Pacer with synthetic timestamps. It confirms no release before external speech start, then a mark scheduled/released at 1.08 seconds for speech starting at 1.0 seconds. This is engine scheduling, not measured end-to-end voice latency.
+
+Worker creation failure or absent Worker falls back to synchronous Session. The fallback constructs Session with incremental only, omitting budgetMs. Its deadline is therefore disabled by default. The cooperative deadline check in makeApi occurs when pushing marks; it cannot interrupt a computation that never calls that path. Native host execution watchdogs remain unknown, so no app-wide infinite-loop or isolation guarantee follows from these JavaScript checks.
+
+NATIVE ADAPTER TIMING / 3D RECORDS — native.js 360, 835–865
+The native stream overrides engine pacing with minPace 0.8, maxSlow 1.4, sequential true, maxSpread 1.25 and rushPace 0.1. Generic Pacer defaults therefore do not describe every native stroke.
+
+tick3d invokes each active tick with elapsed time and dt (falsy dt becomes 1/60). A throwing tick is removed immediately. Completed invocations taking more than 8ms increment a cumulative counter; removal occurs on the sixth slow invocation, not necessarily six consecutive slow frames. Timing is checked after execution, so it cannot interrupt a single nonreturning tick. Flags are reset in finally.
+
+Output is Float32Array with 14 values per stage-prefixed part: part number, mask, position xyz, rotation xyz in degrees, scale, shown, glow, RGB. Mask bits are position 1, rotation 2, scale 4, show 8, glow 16 and valid six-digit hex color 32. Parts from other stage prefixes are omitted.
+
+Offline probe probes/tick3d.mjs uses the original method with synthetic host/session/clock. It verifies removal after six 9ms calls, flag reset and a 14-value position/show/color record with mask 41. evidence/tick3d-probe.json retains the result. Native rendering and wall-clock performance remain unverified.

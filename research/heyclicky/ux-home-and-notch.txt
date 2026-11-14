@@ -1,0 +1,191 @@
+HOME AND NOTCH UX — SURFACE MAP
+Evidence: evidence/ux/home-surface-types.json, a filtered subset of the shipped Swift type metadata. These are declared capabilities/states, not proof that every feature is reachable or displayed in this version. Runtime layout and transitions remain to verify.
+
+NAVIGATION
+ClickyNotchTab declares home, chat, settings, document. HomeSpacePage separately declares suggestions/settings; these are separate navigation models, not an established two-page limit for the whole app. Settings sections: account, general, referral, voice, microphone, dictation, shortcuts, cursor, agents, routines, integrations, developer. Billing/referral exploration is outside current user scope.
+
+CHAT ENTRY AND EXIT
+Declared opening sources: doubleControl, composerClick, chatTab, fileDrag, fileDrop, send. Declared closing reasons: escape, doubleControl, clickElsewhere, dragAbandoned, leftChatTab, notchFolded, drawingCaption, clickElsewhereDuringAnswer, unspecified. These give precise next traces for keyboard, outside-click and drag behavior; do not treat them as fully verified UX rules yet.
+Expanded reply declares opening sources showMore/arcCard/notchCard and closing reasons escape/closeButton/followUpSent/expandedToWindow. Follow-up composer has its own context distinct from notch takeover.
+
+ACTIVITY AND FEEDBACK
+Activity indicators declare dictation dashes, listening bars, thinking dots, agent dots, speaking bars, docked cursor. Live-event model includes clipboard confirmations, microphone trouble, document-folder access denied, integration connected, skill pinned, agent task, computer-control consent/driving, onboarding resume/invite and meeting countdown. This is a candidate visible-state inventory; priority and duration are open.
+
+DOCUMENTS AND MESSAGES
+Preview types include PDF, image, spreadsheet and Quick Look. Markdown blocks include headings, paragraphs, bullets, numbered lists, code, quotes, tables, callouts, checklists, charts, sources and rules. Message UI includes date separators, outgoing/incoming bubbles, a scroll-to-bottom affordance with sent-message pulse and scroll-restoration state, and a turn footer with duration/finished-time/copy feedback. Exact composition remains to inspect.
+
+ACCESSIBILITY AND MOTION
+Reduced-motion inputs appear in typing indicator, status badge, unread dot, scroll-to-bottom control and several notch surfaces. Face renderer exposes gaze/blink/bob/sway/breath state plus systemReduceMotion and ambientMotionFrozen. These establish accommodation hooks, not confirmation that all animation obeys them.
+
+NEXT
+Trace actual tab controls and chat entry handlers, visible task-card states, permission flows and interaction-specific feedback; then consolidate verified flows into a reconstruction-oriented UX specification.
+
+CHAT REPLY FOOTER — VERIFIED STATIC INTERACTION
+HomeSpaceCoworkTurnFooter is tied to descriptor 0x1035955cc by FUN_1005a29b8. Its copy control is conditional: FUN_1005a6768 reads copyText and creates the button only when that optional string exists and is nonempty. FUN_1005a6f28 builds a plain-style SwiftUI button with action FUN_1005a7dd8 -> FUN_1005a73d8 and label FUN_1005a8494 -> FUN_1005a800c.
+The action clears the general pasteboard, writes the supplied reply text as NSPasteboardTypeString, sets didCopy true, and schedules a reset. The button does not check the pasteboard write result before showing confirmation; therefore checkmark feedback is an attempted-copy acknowledgement, not independently verified clipboard success. The action also calls an analytics helper, which was not executed during this offline analysis.
+Normal icon is doc.on.doc; copied icon is checkmark. Copied or hovered uses a shared stronger color, otherwise a different subdued palette color. Exact color values remain unresolved. Icon font size is 11 medium, within a 22 by 22 point frame with rectangular content shape. No added accessibility label was found in the inspected button builder; this bounded finding does not establish absence elsewhere.
+Reset linkage: async descriptor 0x1031cc738 contains relative displacement bytes 90 db 3f fd, targeting FUN_1005ca2c8 -> FUN_1005a7e10. That function sleeps 1,400,000,000 ns, then continuation FUN_1005a7ec4 -> FUN_1005a7fb0 calls the same didCopy setter with false. The error path also reaches reset. Timing is scheduled, not an observed wall-clock guarantee; rapid repeated clicks and view removal have not been exercised.
+The footer can also show duration and finish time. FUN_1005a63c4 includes duration only when present and positive and finish time when available, joining parts with " · " (four UTF-8 bytes at 0x10328fdb0). Formatter FUN_1005a3918 sets dateStyle 0 and timeStyle 1. The displayed footer text uses monospaced digits. Exact duration wording still needs the formatter trace.
+Evidence: evidence/ux/chat-footer-functions.json (bounded function range 0x1005a3d98..0x1005b0000), chat-footer-linkage.json, and home-surface-types.json. All findings are static code behavior; no app launch, clipboard mutation or network request was performed.
+
+SCROLL-TO-LATEST CONTROL — STATIC PRESENTATION AND FEEDBACK
+HomeSpaceScrollToBottomButton descriptor 0x103595fe8 resolves through FUN_100633744. Builder FUN_100635d80 creates a plain button using the supplied action, observes sentPulseID changes via FUN_1006384c8 -> FUN_100637724, cancels the acknowledgement task on disappearance via FUN_10063901c -> FUN_100638cb0, and supplies help text "Jump to the newest message". This is help text, not independently verified VoiceOver labeling.
+Label FUN_10063676c uses white arrow.down at 13-point bold within a 34-by-34 point circular control. A circular outline uses white opacity .16 normally and .35 hovered. Hover scale is 1.06; sent-message breathing scale is 1.12 when not hovered; otherwise 1.0. Ring overlay ignores hit testing. Shape fill color is delegated to FUN_1005548e0 and remains unresolved.
+Affordance modifier descriptor 0x10359601c resolves through FUN_10063ad84. FUN_10063ae6c puts its overlay at bottomTrailing. FUN_10063b238 conditionally creates the control from the modifier's leading Binding<Bool> (metadata identifies isAwayFromBottom), with 22-point trailing padding and conversationBottomInset + 14 bottom padding. The getter FUN_1005558d8 is confirmed as Binding.wrappedValue; this field association relies on metadata/layout, not runtime observation. The actual away-from-bottom threshold is not yet traced.
+The modifier also supplies a bottom defaultScrollAnchor for sizeChanges only when the away-from-bottom binding is false and the isRestoringScrollPosition closure returns false. Otherwise the anchor is absent. This is a specific size-change policy, not proof of all auto-scroll behavior.
+Sent-message feedback FUN_100638738 cancels an existing acknowledgement task and resets ring/breath state inside a transaction disabling animations. Its reduceMotion branch skips the normal .8-second easeInOut ring progression and spring response .3/damping .55 breathing expansion. Reset helper FUN_10063920c starts ring progress at 1 under reduced motion (0 otherwise), opacity at 1, breathing false. Reduced-motion behavior does not mean every animation is disabled: its later fade helper still uses .5-second easeOut. Full timing and all task-descriptor linkage remain to verify.
+The button directly invokes its supplied action. The actual parent scroll destination, keyboard behavior, sentPulseID producer, and restoration lifecycle remain open. Evidence: evidence/ux/chat-scroll-functions.json, chat-scroll-affordance-functions.json, chat-scroll-linkage.json and home-surface-types.json. No UI execution or network requests.
+
+FULL-WINDOW CHAT: VERIFIED JUMP-TO-BOTTOM CHAIN
+This is a distinct parent of the shared scroll button, not proof of the Home modifier's action. HeyClickyWindowTranscript descriptor 0x1035a4d58 is linked by FUN_1013af594. FUN_101395800 creates HomeSpaceScrollToBottomButton only when isAwayFromBottom getter FUN_10138f060 is true and its supplied collection is nonempty (exact collection origin remains open). It uses 18-point trailing padding and bottomRoom + 8 bottom padding, with opacity plus .8-scale appearance transition. This differs from the Home modifier's 22 / inset+14 placement.
+Click callback FUN_1013d9218 -> FUN_101395e58 increments scrollToBottomRequestID and calls a diagnostic/analytics helper. The request observer passes the changed integer through FUN_1013da6a8 -> FUN_1013956f8, which wraps FUN_1013da6f4 -> FUN_101395798 in .35-second easeInOut. The final handler calls ScrollViewProxy.scrollTo with bottom anchor and the identifier heyClickyWindowBottom (initializer FUN_10138f7ec, accessor FUN_10138f82c). This completes the static click-to-scroll chain for the full-window transcript. No runtime scrolling or analytics was triggered.
+Automatic scroll is a separate path: FUN_10139560c issues the same bottom scroll only when the OS-version-at-least-15 check fails. Its caller checks isAwayFromBottom first. Do not apply this older-OS fallback rule to the explicit button, which has no such version gate in the traced chain. Newer-OS automatic-scroll behavior and the away-from-bottom geometry threshold remain unresolved.
+The notch transcript has a different target, notch-chat-bottom, initialized by FUN_101265a04 and used by FUN_101265658 through FUN_101263c24. Its complete triggering chain still needs verification. Evidence: evidence/ux/chat-parent-scroll-candidates.json.
+
+NOTCH CHAT DISMISSAL — VERIFIED CLEANUP AND BRANCHES
+Enum serializers FUN_10142eb18 and FUN_10142efb8 independently confirm numeric opening/closing cases previously obtained from metadata. These serializers feed session diagnostics; enumeration alone still does not establish all entry gestures.
+Shared dismissal FUN_1014307fc checks a Published boolean through FUN_101411438, records the supplied close reason through FUN_10142c5f8, cancels and clears pendingDragOpenedChatCloseTask, clears notchChatOpenedByFileDrag, sets the same Published boolean false through FUN_10142d104, clears notchChatComposerHasDraft and notchChatComposerIsFocused, and releases isNotchAgentPeekHeldOpen. It also calls FUN_10111c304, which directly clears ClickyNotchTabs.hasPendingComposerFocusRequest. Subsequent helpers clear a URL collection and refresh/collapse state; exact property association of that URL collection remains unresolved. Clearing the hasDraft flag is NOT proof of deleting the underlying draft text.
+Outside-click helper FUN_1014314f4 takes a different path while FUN_10142fae4 reports an answer in progress (the predicate is also recorded as answer_in_progress in session diagnostics). When the chat-open predicate is true and answer predicate false, it invokes shared dismissal with case 2, click_elsewhere. During an answer it does not call that ordinary dismissal here: an input flag instead controls whether companion-manager FUN_101f61c60 is invoked. That manager handler and input flag need tracing before claiming whether an answer is cancelled or merely hidden.
+Delayed abandoned-drag continuation FUN_101434a10 rechecks task cancellation, a live presenter, notchChatOpenedByFileDrag and the chat-open predicate. It clears the drag-origin flag, then invokes dismissal case 3 only if notchChatComposerHasDraft is false. If a draft exists, this continuation leaves the chat open. Its preceding async segment sleeps 900,000,000 ns; the task's scheduling trigger still needs verification, so this is not yet an end-to-end drag-exit timing claim.
+Leaving-tab helper FUN_101430468 uses case 4 and clears focus/draft/drag flags only after several guards, including no answer in progress and selected enum not 1 or 3. Exact selected-property association and the other guard remain unresolved; do not claim all tab changes dismiss chat.
+Evidence: evidence/ux/chat-session-functions.json (bounded native range 0x101420000..0x101440000) and chat-session-state-linkage.json. No callbacks executed; analytics and app network untouched. Next: identify the Published chat-open keypath, actual outside-click input, manager answer-dismiss behavior, then keyboard entry/exit callers.
+
+ANSWER DISMISSAL FOLLOW-UP
+The manager handler FUN_101f61c60 sets typedAnswerCaptionRequested=true, calls presenter FUN_101430a7c (sets suppressHoverExpandUntilNotchReentry from FUN_10140fc08), optionally invokes conversation-history FUN_101158cc0, dismisses through FUN_1014307fc(7), and calls FUN_101f9bd50. History helper clears liveReplyID and writes a date through FUN_10114d184; the date property's meaning remains unresolved.
+FUN_101f9bd50 cancels notchTextResponseImageFetchTask, clears its in-flight image query, resets response presentation through several Published setters, and resets the receive-chime flag. Its first helper FUN_101f9a03c cancels notchTextResponseAutoDismissTask and clears auto-dismiss suspension/timing state. These are confirmed presentation-related cancellations. The traced code does not establish whether the underlying answer generation continues; do not translate this into either "stop generation" or "keep generating" without further evidence. Evidence: evidence/ux/chat-answer-dismiss.json.
+
+DOUBLE-CONTROL HANDLER — FOCUS-AWARE DISMISSAL
+FUN_101fea218 contains diagnostic text "Double-tap of control — opening text input" (51 UTF-8 bytes at 0x1032d1a60) and a branch invoking shared dismissal case 1, double_control. In the eligible notch-chat branch, it closes only if the chat-open predicate is true AND FUN_10142ff38 returns true. That second predicate directly requires notchChatComposerIsFocused and a surviving notchChatComposerWindow whose isKeyWindow is true. Thus an open but unfocused/inactive composer takes the focus/open branch rather than the close branch.
+The handler has additional dictation/onboarding/manager guards before reaching this branch. Its other branch requests focus through ClickyNotchTabs and emits different feedback; unresolved helpers prevent claiming the full shortcut behavior for every mode. The diagnostic confirms intended trigger, but the low-level key recognizer, double-tap interval, and configurable shortcut routing remain to trace. Evidence: evidence/ux/chat-keyboard-toggle.json.
+
+SHORTCUT DETECTOR — TIMING AND INPUT GUARDS
+GlobalPushToTalkShortcutMonitor has both a reusable ModifierDoubleTapDetector and a dedicated Control-tap path; they must not be conflated. Reusable detector FUN_10280a144 is linked to descriptor 0x1035b0668 and tracks press start, input-activity snapshot, whether the full modifier set was reached, and first completed tap release time. It rejects completed presses lasting more than .4 seconds and contains a second-tap interval comparison <=.5 seconds. Exact interval receiver requires instruction-level confirmation because Swift Date receivers are incompletely represented by Ghidra.
+Activity snapshot FUN_10280b744 obtains CGEventSourceCounterForEventType for types 10 and 22. FUN_10280b7a4 compares both current counters against the saved pair; changed counters invalidate the press in the detector. This is evidence of intervening-activity rejection, not a claim that every kind of pointer or keyboard event is tracked.
+The caller explicitly bypasses this reusable text detector when the configured modifier mask equals 0x40000. Dedicated helper FUN_10280ac94 compares current/previous flags for sole-Control press/release transitions, captures press start plus the same activity snapshot, rejects changed activity or press duration >.4 seconds, then hands a valid tap to FUN_10280b838. It separately tracks completedControlTapReleaseTimes and a pendingControlDoubleTapTextTriggerWorkItem; a third-press branch within .5 seconds calls FUN_10280b65c. The valid-tap accumulator and delayed dispatch remain to trace before specifying the complete Control double/triple-tap UX.
+Evidence: evidence/ux/modifier-double-tap-candidates.json. These are offline code observations, not executed keyboard tests. Next trace: FUN_10280b838 and FUN_10280b65c, then subject-to-manager callback linkage.
+
+CONTROL TAP DISPATCH — CORRECTION TO DELAY HYPOTHESIS
+FUN_10280b838 is the valid-Control-tap accumulator. It checks the previous release timestamp against a .5-second interval, resets the accumulated array and pending work when outside that interval, then appends the new release timestamp. With exactly two completed taps, configured text-trigger mode byte ==1, and configured modifier mask ==0x40000, it directly calls PassthroughSubject.send on monitor offset 0x90. There is no delayed scheduling call in this branch. The existence of pendingControlDoubleTapTextTriggerWorkItem must therefore NOT be used to infer that a normal double-Control waits for a potential third tap.
+At three or more accumulated taps, the same handler cancels pending work, clears the tap array and directly sends on offset 0x98. Constructor subject ordering and Swift field declarations associate 0x90 with textTriggerPressedPublisher and 0x98 with alwaysOnVoiceModeTogglePublisher; actual subscriber behavior for the latter remains to trace. A triple tap can therefore emit the second-tap text signal before the third-tap signal; suppression farther downstream is not yet ruled out.
+FUN_10280b65c only cancels and clears the pending work-item slot. The dedicated press detector's third-press call to it is cancellation, not itself the third-tap action. Whole-export search found no direct callers of setter FUN_1028059f8 beyond its declaration; that bounded negative result does not exclude indirect uses.
+Evidence: evidence/ux/control-tap-dispatch.json and modifier-double-tap-candidates.json; metadata GlobalPushToTalkShortcutMonitor in swift-type-fields.json. All observations static. Exact Date receiver/interval endpoints and publisher subscriber linkage remain verification gaps.
+
+TRIPLE-CONTROL USER-VISIBLE RESULT — NO-OP HANDLER IN THIS BUILD
+The publisher subscriptions now establish the text route from monitor offset 0x90 via main-queue receive -> FUN_101ffa3dc -> FUN_101fea16c -> FUN_101fea218, connecting the detector to the previously traced focus-aware text entry handler. Offset 0x98 subscribes via main-queue receive -> FUN_101ffa458 -> FUN_101feac90 -> FUN_101fead3c. The manager stores this subscription as alwaysOnVoiceModeToggleCancellable.
+Crucially, FUN_101fead3c is empty. Binary bytes at 0x101fead3c..0x101fead58 confirm only stack allocation, stores, two NOPs, stack restoration and RET; no branch/call or persistent state mutation. Therefore the traced third-tap subscriber does not enable voice mode, close chat, or change microphone state in version 1.1.3 build 71. This corrects any inference from alwaysOnVoiceModeTogglePublisher's name. The second-tap text signal still occurs first when configured; the third handler does not undo it. This conclusion is scoped to the traced manager subscription, not a whole-program proof that no other subscriber exists.
+Evidence: evidence/ux/control-publisher-routing.json and control-third-tap-handler-bytes.json. No key events were injected and no app/network activity was performed.
+
+ESCAPE ROUTING — RESPONSE CANCELLATION VS CHAT CLOSURE
+FUN_1021df1d8 contains the case-0 escape close path. Earlier handlers can consume or bypass the event, including dictation and other modal/view-specific checks; their full priority semantics are not yet resolved. Once its open-chat branch is reached, a boolean getter FUN_101f60d24 or state getter FUN_101f5b294 matching enum case 2/3 selects the response-cancellation route. Otherwise it invokes shared chat dismissal FUN_1014307fc(0). The enum and boolean keypath identities remain unverified, so do not label cases 2/3 from guesses.
+Cancellation route calls FUN_101f6190c, which explicitly Task.cancel()s currentResponseTask and clears the stored task, calls FUN_1022d0bf4, suppresses hover reopening, conditionally ends the live history reply, and clears text-response presentation through FUN_101f9bd50. It then calls FUN_1021e2090 and the history helper. Thus cancellation is requested in this Escape branch; actual remote termination and final rendering are not proven by Task.cancel alone. This differs from the traced outside-click handler FUN_101f61c60, which did not cancel currentResponseTask.
+Evidence: evidence/ux/chat-escape-routing.json. Remaining: map manager state/keypaths, resolve earlier consumers, confirm physical Escape-event callback linkage and follow-up Escape behavior.
+
+VOICE STATE IDENTITY CORRECTION
+The state getter 101f5b294 used in the Escape handler is now linked through its storage keypath and Swift field metadata to CompanionVoiceState: idle=0, listening=1, processing=2, responding=3. Thus the case-2/3 branch refers to processing/responding. The separate boolean getter remains unmapped. Evidence and exact type-reference calculation: evidence/ux/guidance-voice-state-type-confirmed.json; fuller trace in ux-history.txt.
+
+ESCAPE PRIORITY: COMPUTER CONTROL AND CHROME GUIDANCE
+In shared Escape router 1021df1d8, after the initial 1014fe67c bypass gate, the app asks ClickyTakeOverController handler 101579334 first. If handled, it returns immediately. Otherwise it asks Chrome guidance handler 101d3a430; if handled, it also returns immediately. Only then does the router reach the later tutorial, dictation, modal and chat branches. Thus a handled takeover/guidance Escape does not also close the chat through this router.
+
+Chrome handler 101d3a430 checks flow getter 101d34bf8; when true it invokes presentation cleanup 101a4ffbc and flow cleanup 101d385ec, then returns true. The exact visual effects of those cleanup helpers remain unverified. The initial bypass gate is still unclassified, so this priority is conditional on reaching these handlers, not a global claim that takeover always receives every Escape key event.
+
+Evidence: evidence/ux/takeover-escape-routing.json and chrome-guide-escape.json. Static dispatch order, not observed keypress behavior.
+
+ESCAPE BYPASS AND GUIDANCE DISMISSAL — FOLLOW-UP
+The initial Escape bypass is now identified as NotchSystemOverlayCoordinator interaction handling, rather than an unclassified generic gate. Getter 1014fe67c copies its interaction and passes the current Date to 1014faf84. Metadata accessor 1014fac00 identifies NotchSystemOverlayInteraction (descriptor 1035a5be8). Its field-offset vector associates +0x18 with pendingUntil, +0x2c with isEngagedWithOverlay, and +0x30 with windowNumbersPresentBeforeEngagement. The gate returns true before pendingUntil; otherwise it requires engagement and a matching window predicate. Predicate 1014fb178 -> 1014fb09c accepts an absent window number or one not in the pre-engagement set. Window field offsets are inferred from the retained struct layout; specific system panels and engagement triggers remain unverified. User-facing implication: the shared Escape router can defer while a system overlay interaction is active; do not promise every Escape immediately stops the app's current activity.
+
+Chrome guidance cleanup 101d385ec sets the flow-active flag false through 101d34d30 and clears isPreview. This helper itself neither releases held tasks nor clears the old-extension preference. Thus dismissing guidance is not evidence of choosing the separately traced continue-without-Chrome path. The other presentation cleanup helper's visual effects remain unresolved.
+
+Evidence: evidence/ux/escape-bypass-and-guidance-cleanup.json, escape-system-overlay-gate.json, escape-overlay-predicate.json, and evidence/swift-type-fields.json. Offline static analysis only; no app launch, input events, or target network requests.
+
+PROGRAMMATIC PANEL OPENING AFTER INTRODUCTION
+The clickyShowPanel notification chain (recorded in ux-onboarding.txt) ends at NotchWindowManager handler 10150d270. It first calls 10150d458, which enumerates existing notch instances and orders their windows front, unless guard 101e4f610 is true. That guard remains unmapped. This path operates on existing display instances; it does not itself construct a sign-in view.
+
+It then invokes presenter helper 101431404. That helper only proceeds when 10142a130 is false: it clears a Published flag through 10141b098(false) and calls 1014165a0(true, 0). Predicate 10142a130 requires authenticated, onboarding-completed, capability/readiness predicate 10227bc28, and no intro-presentation gate. The precise readiness predicate still needs mapping. Thus the post-intro request takes a different branch from a fully ready user's presentation state; don't assume the same notification always opens the same content.
+
+When 101431404 reports that it took this path, the window manager sets collapseSuppressedUntil to now + 1.6 seconds and wakes its hover scheduler if present. This is a programmed grace period against collapse, not an observed animation duration. The presenter transition 1014165a0 has further intro/tutorial guards, updates hover-related state, and calls shared state resolver 10142375c; the helper's success result does not itself guarantee a particular visible screen. The resolver is retained for follow-up instead of inferring sign-in UI from the notification name.
+
+Evidence: evidence/ux/notch-panel-opening.json, notch-opening-state-resolution.json and main-panel-show-subscriptions.json. No app or input execution. Remaining: classify resolver output for signed-out and permission-incomplete states and tie it to the visible card builders.
+
+SIGNED-OUT PRESENTATION SELECTION — PINNED ONBOARDING
+Shared state resolver 10142375c reaches an explicit authentication branch after higher-priority presentation checks. When its setup-eligible condition local_c34 is true, readiness helper 10142a130 is false, and authenticated getter 101f5b83c is false, it constructs the presentation's empty case tag 2 (using the live-event payload value witness with four empty cases), applies it through 10143a618 and returns.
+
+Swift metadata distinguishes NotchPresentation from its payload NotchLiveEvent: presentation has one payload case liveEvent and four empty cases idle, onboardingPinned, textInput, textResponse. The single-payload tag 2 therefore maps to onboardingPinned. This is not NotchLiveEvent's case 2, agentMultiActivity. This distinction prevents a misleading reconstruction from the shared payload metadata accessor 10140f7bc.
+
+The supported UX conclusion is conditional: signed-out users reaching this branch receive pinned onboarding presentation. Higher-priority overlays and setup/tutorial gates still apply; this does not establish an unconditional sign-in screen after every notification. The pinned card's renderer and exact sign-in controls remain unresolved. Shared resolver also confirms distinct listening/thinking/speaking live-event branches, but these are downstream and are not a substitute for tracing the onboarding card.
+
+Evidence: evidence/ux/notch-opening-state-resolution.json, notch-onboarding-state-helpers.json and notch-presentation-metadata.json. Bounded search for a literal onboardingPinned label found none (notch-presentation-case-labels.json); the case identification rests on metadata and single-payload construction, not a visible label or live test.
+
+
+ESCAPE PRIORITY — ACTIVE ONBOARDING VOICE (2026-11-10)
+The previously unresolved guard 1021e1f50 is now identified: it returns true
+when OneBrainVoice.inFlightTurnIsOnboarding is set AND CompanionVoiceState is
+processing (2) or responding (3). At this point in manager Escape routing
+1021df1d8, true clears the separate armed-date value through 101faa36c and
+returns false without entering the normal chat-close/response-cancel branch.
+Thus ordinary Escape cancellation must not be promised for this onboarding
+voice state. Earlier handlers still have priority, including takeover, Chrome
+guidance, held push-to-talk, dictation and document return. A false return here
+is a manager result, not proof that the operating system consumes or ignores
+Escape; physical event routing and other handlers remain relevant.
+
+Held push-to-talk handler 1021e1784 returns handled when pressStartTime exists.
+It sets suppressPushToTalkReleaseAfterEscape, clears that timestamp, cancels and
+clears pendingKeyboardShortcutStartTask, clears the voice-start-chime flag and
+calls annotation cleanup. This supports preventing the eventual key release
+from initiating its normal action; the actual release consumer is documented
+separately in the voice/drawing reports.
+
+Chrome guidance Escape helper 101d3a430 calls guidance cleanup 101d385ec when
+its active getter is true and returns handled. As already established, that
+cleanup is not the separate continue-without-Chrome action.
+
+Evidence: evidence/ux/escape-priority-handlers.json and existing
+chat-escape-routing.json. Static offline inspection only; no keys were injected.
+
+
+ESCAPE KEY EVENT LINKAGE AND PASS-THROUGH (2026-11-10)
+Static linkage is now established: setup 1021dc8fc creates a CGEvent tap with
+callback 1021e0418, which calls 1021ddc6c. The callback accepts event type 10,
+checks an earlier filter 10154b9f8, reads keyboard field 9, and routes keycode
+0x35 (Escape) through a main-queue closure 1021e3020 -> 1021deef8 ->
+1021e3344 -> 1021df0c0 -> manager handler 1021df1d8.
+
+The event thread requests a semaphore wait of 0.04 seconds (double bits
+3fa47ae147ae147b). It returns null, suppressing the original event, only when
+that wait succeeds AND the manager result is handled=true. Otherwise it returns
+the original event. The main-queue closure also compares its captured date age
+with 0.04 seconds before calling the manager, then signals the semaphore. Late
+queue delivery can therefore skip the manager altogether. This is a requested
+timing threshold, not a guarantee of wall-clock latency. A race near the wait
+boundary is not excluded by this trace.
+
+The Escape branch has no additional modifier/repeat filter of its own, unlike
+neighboring arrow and screenshot branches. The earlier 10154b9f8 filter and
+successful event-tap installation still constrain availability. Re-enable logic
+exists for event types 0xfffffffe and 0xffffffff. No key was injected: actual
+installation, OS permissions and live responsiveness remain unverified.
+
+This resolves the earlier physical-event linkage gap at the code level. In the
+onboarding-voice guard documented above, manager false can let Escape continue
+to the foreground app; it is not equivalent to consuming the key without action.
+Evidence: evidence/ux/escape-manager-callers.json,
+escape-manager-callback-wrapper.json, escape-event-main-thread-routing.json,
+escape-event-routing-callers.json and escape-event-registration.json.
+
+
+ESCAPE INPUT FILTER — APP-GENERATED EVENTS (2026-11-10)
+The remaining pre-handler filter 10154b9f8 reads CGEvent integer field 0x2a and
+returns true exactly when it equals 0x434c49434b (ASCII CLICK). The event listener
+1021ddc6c returns the original event without entering its keyboard-action branches
+when this filter succeeds. It therefore excludes tagged input from the user
+Escape-interruption path, rather than suppressing that event's delivery.
+
+Producer 10154b9c0 writes the same field/value; 10154ba38 calls it before
+CGEventPost. Keyboard helpers 10154f348, 10155058c and 101550ac0 create keyboard
+events and post them through this tagged helper. This supports the UX distinction
+between user interruption and the app's own generated input. It is not a proof
+that every generated event in the whole application is tagged, or that any other
+application cannot supply the same marker. No input was generated during analysis.
+
+Evidence: evidence/ux/escape-input-filter.json, tagged-input-producers.json,
+tagged-keyboard-producers.json and escape-event-routing-callers.json.

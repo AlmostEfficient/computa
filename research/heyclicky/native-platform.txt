@@ -1,0 +1,12 @@
+NATIVE PLATFORM — build 71
+Evidence: evidence/native-platform-inventory.json retains commands, outputs, permission descriptions and parsed privacy manifests.
+
+The modern codesign --entitlements - invocation reports app-sandbox false, allow-jit true, audio-input true, camera true, network.client true and a screen-capture picker Mach lookup exception. These are embedded declarations, not proof of OS permission grants. A deprecated colon-form invocation gave an invalid-blob warning; the modern invocation decoded the declarations without that warning. Do not use the deprecated result to claim the app has invalid entitlements.
+
+Signature metadata reports runtime flag 0x10000 and TeamIdentifier 2UDAY4J48G. Authority is unavailable and Info.plist is reported not bound in this environment; no signature-validity conclusion follows from this display command.
+
+Info.plist contains usage descriptions for Desktop, Documents, Downloads, microphone, screen capture and speech recognition. Camera entitlement presence alone does not establish a camera feature or permission grant.
+
+Linked frameworks include JavaScriptCore and QuartzCore (consistent with the drawing adapter architecture), ScreenCaptureKit, Speech, AVFoundation, Vision, PDFKit, CoreData, Contacts, EventKit, Photos, WebKit and ServiceManagement. A linked dependency does not establish a reachable feature or a particular persistence implementation. Use these as trace targets.
+
+Three packaged privacy manifests describe Sentry diagnostics, PostHog interaction/usage analytics and PLCrashReporter diagnostics. These library declarations do not establish actual transmitted payloads, app-wide collection practices or server retention.

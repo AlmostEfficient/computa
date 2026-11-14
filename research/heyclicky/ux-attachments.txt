@@ -1,0 +1,309 @@
+CURRENT RESPONSE LIFECYCLE SUMMARY — STATIC EVIDENCE
+The normal notch Send action accepts text, files, or both and clears the draft before downstream success. File-only requests receive a default instruction after attachment conversion. Auth and screen-permission gates can return before submission; restoration outside these functions remains unresolved.
+Typed-request failures clear active-turn state and use a classified message or generic fallback. Recovered classified messages explain network blocking or regional availability, including voice-specific wording in the typed path. Exact generic wording and all surface-selection rules remain open.
+Standalone completed responses schedule a 10/20/30-second reading countdown using words and estimated 74-character lines. A tutorial-related flag sampled when the response opens caps this at 6 seconds: it includes the invitation and running exercises except interview and finale. The text-response follow-up composer pauses the countdown for focus, nonempty text/attachments, or attachment picking; suspended time is preserved. Hover-related suspension exists but its exact region and programmatic-state interaction remain unresolved.
+Escape in the follow-up input and a rendered Close button share the dismissal path with expiry. Dismissal clears transient response text/images and requests interruption/audio suppression if a text turn remains active. Conditional history cleanup clears a live-reply marker; universal history retention is not established. No runtime action or logged-in target request was used to establish these findings.
+Evidence and limitations appear in the detailed entries below. Billing is excluded.
+
+HEYCLICKY ATTACHMENT UX — PARTIAL STATIC TRACE
+Evidence: evidence/ux/file-picker-actions.json from installed 1.1.3 build 71. No picker opened, file uploaded, app launched or account request made.
+
+NOTCH COMPOSER
+Descriptor 0x1035a3ad0 identifies NotchHeyClickyComposer, including attachedFileURLs, attachmentThumbnails, hoveredAttachmentPath, isAttachmentCapNoticeVisible and attachmentCapNoticeGeneration. FUN_1012920ec opens a native modal picker titled "Attach files" with files allowed, directories disallowed and multiple selection enabled. No file-type filter appears in this picker function; downstream processing may still reject types.
+The picker remembers the frontmost application, activates HeyClicky for the dialog, and on return attempts to reactivate the former application if it exists and differs from HeyClicky's process. It then invokes FUN_101291ed0 (focus-related behavior still unverified). Accepted selection invokes FUN_1012954d0; cancellation bypasses attachment addition.
+Addition first filters out URLs already in the existing attachment collection via FUN_1012b5958 -> FUN_101295c7c. It then takes at most max(0,10-existingCount) entries and appends them. This establishes a ten-attachment cap for this path. The prefilter compares with existing attachments, so do not assume it deduplicates repeated URLs within the same incoming batch.
+If the filtered selection exceeds remaining capacity, the function sets the cap-notice flag, increments its generation, and schedules a callback after 2.5 seconds. FUN_1012b5e78 -> FUN_101295d24 hides the notice only if the generation still matches, preventing an older timer from hiding a newer notice. Visible notice wording and exact rendering remain to trace. The function returns the number actually appended.
+
+FULL-WINDOW COMPOSER
+FUN_1013a9f74 uses a native modal picker allowing multiple files and disallowing directories. On acceptance it maps URLs to strings through a keypath (exact conversion still unresolved) and calls FUN_1013a6104.
+That handler iterates strings, skips a string already in the current collection, and appends only while the collection has fewer than ten items. Because it rechecks after each append, repeated incoming strings are deduplicated here. It sets another state flag when the incoming collection is nonempty, even if nothing was appended; flag identity and visual feedback remain unresolved. No overflow-notice branch appears in this function, which is not proof of no notice elsewhere.
+
+REMAINING
+File-chip appearance/removal, thumbnail loading/errors, supported downstream types and size limits, paste/drop handling, send failure and retry, persistence of unsent attachments, document-preview opening/navigation.
+
+NOTCH FILE CHIP AND REMOVAL
+FUN_101293050 supplies URL.lastPathComponent as help text. Image content FUN_1012b4244 -> FUN_101293cf0 looks up attachmentThumbnails by URL.path; if present it uses the cached NSImage with aspect-fill, otherwise NSWorkspace.iconForFile with aspect-fit. This establishes a nonblank fallback, not the thumbnail-generation success rate or supported preview formats.
+Hover handler FUN_1012b4950 -> FUN_101294b80 stores the hovered URL path on entry; on exit it clears the hover path only if that path is still the current one. This avoids an older chip's exit clearing a newer chip's hover. The conditional overlay FUN_101294208 creates a plain button through action FUN_1012cb644. Exact boolean supplying overlay visibility remains to confirm.
+The action calls FUN_101294ac4, which removes all matching URLs from attachedFileURLs and writes the updated list back. Equality is Foundation.URL == via FUN_10109fdfc -> FUN_10108dda8. No file deletion occurs in this traced action; duplicate entries for that same URL, if present, are all removed. This action does not itself clear the thumbnail cache or hover-path state.
+FUN_10128f104 provides help text "Up to 10 files" in one branch and "Attach files" otherwise. This is verified hover help; do not confuse it with the still-unresolved temporary overflow notice rendering. FUN_10128fb18 includes "Drop to attach"; actual drop acceptance remains to trace.
+Evidence: evidence/ux/attachment-chip-candidates.json and attachment-chip-actions.json. No files were attached, removed or previewed at runtime.
+
+NOTCH SEND VALIDATION AND DRAFT LIFECYCLE
+FUN_101290afc reads draftText and attachedFileURLs, trims whitespacesAndNewlines from text, and proceeds only when trimmed text is nonempty OR attachments are nonempty. Consequently file-only submission is permitted by this action; empty/whitespace-only submission without files is ignored. This does not yet prove the button's disabled appearance or keyboard submission behavior.
+Before dispatch, it sets draftText to an empty string and attachedFileURLs to an empty array through FUN_101283e40/FUN_1012840c0. Setters correspond to metadata field offsets for draft and attachments. Thus the UI clears optimistically, before downstream success is known. Captured text/URLs remain available to the following calls.
+Normal branch opens a chat session with source case 5 (send) if necessary, invokes conversation-history helper FUN_101154e5c with text and URLs, records submission counts, then calls manager FUN_1027720d8(text, URLs, true). Read-aloud state is read for submission metadata and read again by the manager. Actual synthesized speech and error response need separate tracing.
+Follow-up branch looks up its target through FUN_1011273f0 (collection first(where:)). If missing, it releases captured values and returns after the composer has already cleared. There is no restoration or error presentation in this caller branch. This is a potential stale-target UX failure case, not a reproduced live bug or proof that the state is reachable. If present it calls FUN_1011d3868 with the entry.
+The manager has distinct onboarding-demo and explicit-agent-follow-up routing; the normal composer call cannot establish a single universal backend/send flow. Network errors, retries, draft restoration outside this function, and upload progress remain open.
+Evidence: FUN_101290afc in evidence/ux/attachment-chip-candidates.json and evidence/ux/composer-send-state.json. No submission performed.
+
+SEND BUTTON ENABLEMENT VERIFIED
+The send-button branch of FUN_10128dc88 uses FUN_101285f10, negated, as SwiftUI.disabled. That predicate exactly mirrors action validation: trimmed draft text nonempty OR attachedFileURLs nonempty. Therefore, where this send control is rendered, whitespace-only text with no files disables it and file-only drafts enable it. Other branches render alternative controls; this is not a claim that Send always remains visible during an answer.
+Button action factory FUN_1012913d8 -> FUN_1012d11e8 -> FUN_101290ac8 -> FUN_101290afc links the rendered button to the previously traced send logic. Label FUN_1012914b0 uses arrow.up at 13-point bold in a 30-by-30 point frame with circular background and hit shape. The enabled arrow uses black at .85 opacity; disabled color is delegated to a palette helper and not yet decoded.
+Evidence: evidence/ux/composer-send-button.json and attachment-chip-candidates.json. Keyboard submission and exact alternative-control conditions still need tracing.
+
+COMPOSER CONTROL VISIBILITY — CORRECTION AND VERIFIED STRUCTURE
+The adjacent control is NotchLibraryModeSwitch, identified by metadata descriptor 0x1035a57d4 through FUN_10144e420. It is not evidence of a response-stop button. FUN_10128dc88 renders this switch when FUN_101285d54 is true and followUpEntryID is absent; the constructor receives diameter 30. The same builder independently renders Send whenever FUN_101285d54 is true. Thus these controls can coexist; the switch does not replace Send in this branch. The user-facing meaning/action is resolved below: Read answers aloud.
+FUN_101285d54 returns true for an unresolved LazyState boolean, a nonempty raw draft string, a nonempty attachment collection, or the conjunction of presenter predicates FUN_1014102cc and FUN_10140f644. Raw draft visibility differs from trimmed send validation: whitespace can satisfy the draft portion of visibility while Send remains disabled without attachments. Do not label this visibility predicate as response-active until the remaining fields are mapped.
+Evidence: composer-send-button.json, composer-active-controls.json, composer-control-predicates.json, and swift-type-fields.json. Static artifact inspection only.
+
+READ-ALOUD CONTROL RESOLVED
+Despite its internal name NotchLibraryModeSwitch, the rendered view FUN_10149bf34 gives the control accessibility label "Read answers aloud" and hint "When on, HeyClicky speaks its answers as well as writing them." Accessibility value switches between on/off strings. This is a speech preference, not a document-library navigation control.
+The label FUN_10149cee8 uses speaker.wave.2.fill in a circular hit region sized by buttonDiameter (30 in the notch composer). It uses a semibold symbol, 12 points at this size; smaller diameters below 26 use 10 points. The off icon is white at .5 opacity, increasing to .75 on hover; the on icon is black at .82 opacity. Background styling is delegated to the shared palette helper.
+Button factory FUN_10149cca0 -> FUN_1014dc7e4 -> FUN_10149cd78 -> FUN_10149cdac toggles its AppStorage boolean, persists it, and passes the new value to FUN_101c533c8. It cancels the pending tooltip task and sets tooltip visibility true. Constructor initializes AppStorage with a false fallback through FUN_101278188; the key resolves through FUN_10140de90 -> FUN_10140e25c to "ClickyLibraryModeEnabled". This proves the fallback and storage binding, not the value on an existing user's installation or whether another startup path changes it.
+Tooltip content FUN_10149e73c explains the action: when off, "Click to have HeyClicky speak its answers out loud as it writes them." When on, "HeyClicky speaks its answers out loud as it writes them. Click to turn off." Tooltip rendering FUN_10149d7ac does not intercept pointer events and uses an opacity/scale transition. Hover exit cancels the pending tooltip task and hides the tooltip; hover entry schedules a task (delay still unresolved). The tooltip panel FUN_10149dce0 is 210 points wide with horizontal 10/vertical 8 padding.
+Evidence: library-mode-references.json, library-mode-functions.json (constructor), read-aloud-actions.json. No speech played, preference changed or app request made. Immediate effect on already-playing speech remains to trace through FUN_101c533c8.
+
+READ-ALOUD EFFECT BOUNDARY
+FUN_101c533c8 emits library_mode_enabled/library_mode_disabled event strings; it is not a speech-stop call. The traced click action writes the preference, records that event and manages tooltip state. No explicit playback-stop call is present in that action. This does not exclude an indirect preference observer, so immediate muting of ongoing speech remains unverified.
+The shared getter FUN_1022bef9c reads the same defaults key and returns false when missing or not convertible to Bool. Direct-call search across retained final.c found consumers in submission metadata (FUN_101290afc), normal typed submission (FUN_1027720d8), and guided annotation handling (FUN_1020628d8/FUN_1022d2aa4). In normal typed submission, the preference is read before composer dismissal and routing. In FUN_1020628d8, typed-origin annotation invokes FUN_101f9c530 and only invokes FUN_1022d2708 when read-aloud is enabled; non-typed origin invokes the latter regardless. The helpers' exact audiovisual effects remain unmapped, so this only establishes different routing for typed-origin interaction.
+Search boundary: direct references to the key getter/reader/writer in retained decompilation; indirect callbacks and framework observers may not appear as direct calls. Evidence: read-aloud-effects.json and read-aloud-consumers.json. No live preference mutation or playback test.
+
+NEW-TASK DISPATCH: FILE-ONLY PROMPT AND EARLY RETURNS
+The ordinary typed-submission branch in FUN_1027720d8 converts attachment URLs using FUN_101e6d350. When the submitted text is empty and the converted attachment collection is nonempty, it substitutes "Please review and act on the attached files." before calling FUN_1022d41b0. This establishes a default request for file-only submission; it does not establish that this generated sentence appears in the visible conversation. Nonempty text is retained. Attachment conversion can affect whether this fallback is chosen; file-only enablement alone does not prove a usable attachment survives conversion.
+Before that dispatch, a false auth-manager predicate FUN_101f5b83c -> FUN_102f6c35c posts the notification named "clickyShowPanel" (FUN_101ddcd40 -> FUN_101ddcf0c) and returns. A second gate FUN_10227f2dc can also post this notification and stop submission. Its exact user-facing prerequisite remains unresolved. Neither early-return branch restores the composer draft in this function. Combined with the already verified optimistic clearing in FUN_101290afc, recovery after these gates deserves attention; whether another observer restores the draft or whether this state is reachable from the visible composer remains unverified.
+FUN_1022d41b0 routes further through FUN_1022dc35c or FUN_101677d74 depending on FUN_101602cec. A single universal task-creation path is therefore not established. Actual request success, visible failure feedback, retry and draft restoration outside these functions remain open.
+Evidence: evidence/ux/new-task-dispatch.json, new-task-entry-gates.json, new-task-auth-gate.json. Static saved decompilation only; no app launch or target request.
+
+SCREEN-RECORDING PREREQUISITE RESOLVED
+The previously unnamed early-return gate FUN_10227f2dc checks FUN_102fb1c78. This accepts either current CGPreflightScreenCaptureAccess success or the stored boolean com.learningbuddy.hasPreviouslyConfirmedScreenRecordingPermission. FUN_102fb1ae4 writes that boolean true when preflight succeeds; FUN_102fb2070 combines the current and saved values with logical OR. Therefore this submission gate means current-or-previously-confirmed screen permission, not proof of current screen capture availability. Revoking permission after an earlier grant need not stop submission at this particular gate. Other permission checks and actual capture failure handling remain separate.
+When both values are false, FUN_10227f2dc performs setup-state actions, posts clickyShowPanel and returns true; the caller stops before ordinary new-turn dispatch. The destination panel's exact state depends on its observers and was not newly verified here. No draft restoration appears in this gate or its caller; reachability and restoration elsewhere remain open.
+
+ORDINARY TEXT-TURN STATE
+FUN_1022dc35c revalidates that text or the processed attachment collection is nonempty. It then checks FUN_1022c39d0 before creating a text turn. On the accepted branch it resets the accumulated answer, marks activeTextTurn true, stores the prompt, attachment paths and routing, and stores the requested read-aloud flag in activeTextTurnRespondsWithVoice. An already-active text turn invokes FUN_102317660 before these changes; its precise cancellation/replacement behavior remains untraced. The code then schedules an asynchronous operation via descriptor 10323c390. These internal state changes support the submission lifecycle; they do not establish the exact progress UI or successful response delivery.
+Evidence: evidence/ux/new-task-prerequisite-routing.json and new-task-permission-and-rejection.json, alongside new-task-entry-gates.json and new-task-dispatch.json. All inspected offline. The additional rejection predicate FUN_1022c39d0 has not yet been classified; avoid assigning it a UX meaning from its calls alone.
+
+TEXT SUBMISSION FAILURE AND REPLACEMENT FOLLOW-UP
+The async descriptor 10323c390 resolves from the saved ARM64 bytes to thunk FUN_1027391f4, which calls FUN_102344094. Its continuation FUN_1023441bc awaits FUN_1023450e4; FUN_10234433c branches on the Swift error result, with nonzero error going to FUN_102344994. That error continuation clears activeTextTurn, activeTextTurnRespondsWithVoice, accumulated answer, stored prompt, attachment paths and attachment routing before awaiting error classification FUN_102e77a88. Continuation FUN_1023444e8 obtains an optional classified error message through FUN_102e78510, falling back to CompanionManager.genericCompanionErrorResponseText if absent, and passes it to FUN_101f9b0a8 followed by FUN_101f9b874. This establishes a deliberate error-feedback path rather than assuming silent failure. The exact copy and rendered surface still require tracing those helpers. No composer-draft restoration is present in these error continuations.
+The previously unclassified active-turn helper FUN_102317660 reads the pending assistant transcript, selects accumulated answer except that a voice-answer turn with an empty accumulated answer uses the pending transcript, processes user and assistant text with FUN_1022c3424, and passes the resulting pair to FUN_102336024 under text_companion. It then clears the active turn's prompt, answer, attachments and read-aloud state. This is a turn-finalization path, not evidence by itself that all underlying work is cancelled or that a specific partial-answer card is retained. Its pending-usage helper is outside the requested billing scope and was not pursued.
+Evidence: evidence/ux/new-task-async-and-replacement.json, text-turn-completion-helpers.json and text-submit-async-continuations.json. The last file retains a bounded contiguous function range; only the connected error chain above is interpreted. No requests executed.
+
+SUBMISSION ERROR COPY AND RESPONSE PRESENTATION
+FUN_102e78510 constructs two classified messages. Network-blocking case: "I can't reach [service] from this network. A firewall, proxy or DNS filter seems to be blocking it, so I can't answer until that changes." Region case: "HeyClicky's voice runs on [service], and [service] isn't available in [region]. That's why I can't answer here." Missing region text becomes "your region". These are literal templates reached by the typed-turn error chain; they do not establish the diagnosis is accurate or that every connectivity error receives one of these messages. The voice wording can therefore be selected even on this typed-request path. Generic fallback copy remains unresolved.
+FUN_101f9b0a8 writes the selected message through FUN_101f9704c to a Published string (keypaths 103233cd0/103233cf8). FUN_101f9b874 reads the same property via FUN_101f605b4 and checks trimmed emptiness. For nonempty text, a presenter predicate FUN_101411350 selects between response-state helpers FUN_101f97468/FUN_101f9bf5c and conversation-history completion FUN_101157f14 followed by FUN_101158e94 and cleanup. The history path is thus connected, but the precise predicate meaning and visible card layout remain unverified.
+For nonempty text, FUN_101f9b0a8 also checks hasPlayedTextReceiveChimeForCurrentResponse and invokes FUN_101f9b3fc only when false, setting it true first. That helper calls the sound helper FUN_101d211d8 with 0x3f333333 and case 2. This establishes an attempted once-per-response receive-chime path for errors, not audible playback under every setting.
+Evidence: evidence/ux/text-submit-error-presentation.json and text-error-response-state.json. generic-response-error-references.json contains a getter and destructor reference only, NOT initialization or decoded fallback wording. Static evidence only; no runtime failure induced.
+
+COMPLETED RESPONSE AUTO-DISMISS SCHEDULING
+The non-history completion branch FUN_101f9b874 -> FUN_101f9bf5c(0,1) schedules notchTextResponseAutoDismissTask. Duration helper FUN_101f9cf64 trims the response and counts whitespace/newline-separated words (separator FUN_101decd80). It also computes a second size metric from newline-separated segments through FUN_101ff69e4 -> FUN_101f9e038 with parameter 74; the exact metric remains unclassified. It chooses 10 seconds when word count <=32 and metric <4, 20 seconds when word count <=90 and metric <9, otherwise 30 seconds. Empty trimmed text yields 10 in this helper, although the calling completion path separately handles empty responses. A separate predicate FUN_101f606dc can cap the duration at 6 seconds; its meaning is not yet established.
+Scheduling cancels any older dismissal task, updates duration/countdown state, clears notchTextResponseAutoDismissHoverSuspended and records the current tick date. Descriptor 103235d48 resolves to FUN_101ff6940 -> FUN_101f9d3d8. Its loop sleeps 100 ms and uses Date.timeIntervalSince to update countdown, so these are duration values in seconds rather than frame counts. Full hover/pause guards and the final dismissal helper need further interpretation before claiming uninterrupted elapsed-time dismissal.
+Surface routing is broader than a simple open-window check. FUN_101411350 combines a Published presenter flag, FUN_1013187bc, and FUN_101430298. FUN_1013187bc requires an existing visible, non-miniaturized app window and a matching optional model identifier; merely opening any app window is insufficient. The other branches and exact identifier meaning remain unresolved.
+Evidence: evidence/ux/response-finish-surface-routing.json, response-auto-dismiss-duration.json, response-duration-count-helpers.json, response-auto-dismiss-loop.json. Static inspection only; no visible timing measured.
+
+READING-TIME METRIC AND SUSPENSION RESOLVED
+The previously unnamed size metric is an estimated wrapped-line count: FUN_101f9e038 adds max(1, ceil(max(String.count(segment),1)/74)) for each newline-separated segment. This uses Swift character counts, not measured rendered width. Combined with word count, the earlier 10/20/30-second thresholds are therefore reading-time heuristics, not actual layout measurements. Blank interior lines contribute at least one line.
+Timer continuation FUN_101f9d718 stops when cancelled, when its weak manager is gone, or when its response-state predicates cease to allow countdown. While either notchTextResponseAutoDismissHoverSuspended or notchTextResponseAutoDismissComposerSuspended is true, it refreshes the last-tick date and leaves remaining time unchanged. Otherwise it subtracts max(0, elapsed seconds) from remaining time, clamps to zero, and invokes FUN_101f6190c at zero. Thus suspended time is excluded rather than collected and deducted on resume. It checks again after each 100 ms sleep; this is nominal polling, not guaranteed real-time precision.
+FUN_101f60224 updates the composer-suspended flag and FUN_101f60b88 updates the hover-suspended flag when their input changes; both also update the last-tick date. The flag behavior is proven, but the exact UI events setting them still need caller tracing before asserting which hover region or composer state pauses dismissal. FUN_101f9a03c cancels/clears the task and resets both suspension flags and countdown state.
+Evidence: evidence/ux/response-auto-dismiss-loop.json and response-countdown-suspension-callers.json. These supersede the unknown second metric in the prior entry; actual visual wrapping and live dismissal timing remain unverified.
+
+COMPOSER INTERACTION PAUSES RESPONSE DISMISSAL
+NotchTextInputSurface's FUN_10107abfc, in its mode-case-1 branch, sets composer suspension when the input FocusState is true OR FUN_101075cdc reports content. That content predicate trims the text from FUN_101071624 and accepts nonempty text or a nonempty attachment collection from FUN_101072078. Thus this branch protects an unfocused draft containing text or attachments as well as a focused empty composer. Whitespace-only text without attachments does not satisfy the content predicate. Exact mode-case naming and callback registration remain to be linked; do not apply this behavior universally to every composer.
+The Attach files action FUN_101088edc sets composer suspension true before opening its native modal file picker in that same mode branch. After either accepting or cancelling the picker, it calls FUN_10108f9e4 -> FUN_10107abfc to recompute suspension from focus/content. It therefore does not unconditionally resume on picker close. FUN_10107a8d0 clears focus and explicitly clears suspension in its mode-1 branch.
+Hover suspension has two connected callers: FUN_1014313a8 copies presenter property FUN_10140fc08 into the hover-suspended flag, while FUN_1010acfe4 additionally requires valid countdown state FUN_1010ad9e8. The presenter's property uses keypaths 10320c748/10320c770. Its exact pointer region remains unresolved; the name of the destination flag alone does not prove that hovering any part of the notch pauses the timer.
+Evidence: evidence/ux/response-pause-ui-callers.json and response-pause-input-predicates.json. Static call-path findings, not live interaction tests.
+
+PAUSE CALLBACKS AND HOVER-STATE CAUTION
+Additional direct callers of composer pause recomputation are FUN_101079d9c (recalculates composer line-count state), FUN_10107ab3c (updates attachment-count state), and FUN_10107afbc (delegates directly). Closure wrappers FUN_101087ba4 and FUN_1010888d8 connect the latter two callbacks. Their SwiftUI modifier registration still needs verification before calling these confirmed onChange bindings.
+The presenter property feeding hover suspension is written through FUN_1014140f0 using the same keypaths 10320c748/10320c770 as getter FUN_10140fc08. It is not safe to describe this as raw pointer-inside state: FUN_101410f38 sets it true alongside isNotchAgentPeekOpenRequested and notchAgentPeekRequestSawHover, while several close/reset paths explicitly set it false, including integration-toast cleanup FUN_1014319b0. The suspension source can therefore be affected by presentation state as well as hover handling. FUN_1014165a0, which tracks hoveredNotchScreen, is another writer but its complete guards remain to trace.
+Evidence: evidence/ux/response-pause-observer-links.json and response-hover-state-writers.json. The latter is a bounded caller collection, not proof every writer is recovered; no UI event was executed. This refines rather than expands the earlier hover claim: verified pause flags should not be equated with a universal hover region.
+
+COMPOSER PAUSE VIEW BINDINGS CONFIRMED
+FUN_101077914 registers SwiftUI onChange callbacks for the attachment collection from FUN_101072078 and for the input's FocusState wrappedValue. Attachment callback FUN_101087ba4 -> FUN_10107ab3c and focus callback FUN_1010888d8 -> FUN_10107afbc both reach FUN_10107abfc, closing the previously open view-registration gap. Its adjacent String onChange callback FUN_101086f44 -> FUN_10107aac0 calls FUN_101079d9c, which also recomputes suspension, then forwards the new text to a tutorial-related helper. These are actual view bindings rather than merely unused callback bodies.
+Combined with the verified mode-case-1 condition, the pause state is recomputed when focus, text or attachments change. The earlier caveat about unknown SwiftUI registration is superseded. The exact user-facing name of mode case 1 and the initial-invocation flag remain unresolved; no claim is made about all composer variants or initial state before callbacks occur.
+Evidence: evidence/ux/composer-pause-view-bindings.json, composer-text-change-wrapper.json, composer-text-change-callback.json, and earlier response-pause-observer-links.json. All from retained static code.
+
+COMPOSER CONTEXT TYPE IDENTIFIED
+NotchTextInputSurface metadata declares a context field whose symbolic type reference 1034583e4 resolves to descriptor 1035a1b3c, NotchTextComposerContext. That enum declares two no-payload cases in order: notchTakeover and textResponseFollowUp. This makes text-response follow-up the candidate identity for the mode-case-1 branch that protects drafts from auto-dismissal. However, the context field's precise value-layout offset has not yet been connected to the +0x29 byte used in the branch; preserve this as a strong candidate, not a completed mapping. A bounded search of functions 101070000..101071624 yielded no +0x29 initializer match and does not prove no initializer exists elsewhere.
+Evidence: evidence/ux/composer-context-type-link.json; metadata source evidence/swift-type-fields.json and symbolic bytes from the retained ARM64 binary. composer-context-layout-candidates.json records the empty bounded search only. No runtime actions.
+
+COMPOSER MODE MAPPING CLOSED: TEXT-RESPONSE FOLLOW-UP
+The metadata completion function FUN_10109e154 supplies the first four field layouts to swift_initStructMetadata in declared field order: companion manager size16/alignment8, presenter size16/alignment8, optional available width size9/alignment8, and context size1/alignment1. Applying these layouts gives offsets 0, 0x10, 0x20 and 0x29 respectively. Therefore the byte tested at +0x29 in the pause logic is the context field, closing the outstanding layout link. The no-payload NotchTextComposerContext enum has notchTakeover first and textResponseFollowUp second: case 1 corresponds to textResponseFollowUp.
+The user-facing conclusion is now supported: the text-response follow-up composer pauses the completed response's dismissal countdown while focused, while holding non-whitespace text or attachments, and while its attachment picker is open. Focus/text/attachment onChange bindings recompute the pause, and picker completion recomputes it even after cancellation. These statements concern this follow-up composer, not every chat input. Suspended time is excluded from countdown, as previously traced. Actual live timing and visual presentation remain untested.
+Evidence: evidence/ux/composer-metadata-layout-initializer.json (descriptor completion offset 1035a1b7c resolves to 10109e154), composer-first-fields-layout.json (retained layout values and derived offsets), composer-context-type-link.json, and prior view/callback evidence. This supersedes the candidate-only context mapping above.
+
+RESPONSE DISMISSAL CLEARS THE TRANSIENT RESPONSE
+Countdown expiry calls FUN_101f6190c. This cancels/clears currentResponseTask, invokes voice cleanup through FUN_1022d0bf4 (deeper behavior remains untraced), and calls presenter FUN_101430a7c. That presenter helper copies its current state into suppressHoverExpandUntilNotchReentry, establishing a suppression state change but not yet the full pointer re-entry behavior.
+Unless isFinishingEmptyNotchTextResponse is true, the same presenter predicate FUN_101411350 can select history helper FUN_101158cc0. That helper updates a date via FUN_10114d184 and clears liveReplyID. It does not itself delete stored conversation entries. This is not proof that every standalone response was saved; the applicable history insertion path and persistence remain separate.
+Finally FUN_101f9bd50 cancels/clears auto-dismiss state and any response-image fetch task, clears the pending image query and image collection, resets response flags, writes an empty string through the previously linked response setter FUN_101f9704c, and resets the once-per-response chime flag. Thus dismissal explicitly clears transient response content and pending image work. It does not restore a composer draft in these helpers. Cancellation is requested; this static path cannot guarantee already-sent work or side effects are undone.
+Evidence: evidence/ux/response-dismiss-entry.json and response-dismiss-cleanup.json, connected to response-auto-dismiss-loop.json. No UI closed and no network request executed during this inspection.
+
+DISMISSAL INTERRUPTS AN ACTIVE TEXT TURN
+The dismissal chain FUN_101f6190c -> FUN_1022d0bf4 looks up an existing associated RealtimeVoiceController rather than creating one. FUN_1022dfea8 only proceeds when activeTextTurn is true. If a client exists, it invokes FUN_102e85368; it then finalizes the turn through FUN_102317660 when the weak manager exists, otherwise clears activeTextTurn and stored answer/prompt directly. It resets ignoreNextSupersededResponseFinish. If activeTextTurn is false, this helper does nothing; it is not a universal stop-all-voice action.
+The client interrupt helper sets suppressAudioForCurrentResponseCancelled true, clears pending response-creation state, conditionally constructs response.cancel for an in-flight response, invokes a manual-interrupt helper, and constructs input_audio_buffer.clear. This confirms that closing an active text response is designed to interrupt the response and suppress its audio, not merely hide the card. Actual audio-device cessation, cancellation delivery, and already-executed actions are not established by this static path. The wire-message names are supporting implementation evidence, not visible UX labels.
+Evidence: evidence/ux/response-dismiss-voice-operation.json and response-cancel-transport-operation.json, connected to response-dismiss-entry.json. These functions were read from saved code only; no cancellation or other network messages were sent.
+
+ESCAPE AND BUTTON DISMISSAL CONNECTED
+FUN_101089650 registers SwiftUI onKeyPress with KeyEquivalent.escape and callback FUN_1010a14f8 -> FUN_10108bb74. In verified context case 1 (textResponseFollowUp), that handler calls FUN_101f604c0 -> FUN_101f6190c and returns KeyPress.Result.handled. Thus Escape in this follow-up field uses the same response-dismissal/active-turn-interruption path as countdown expiry. Other context uses a separate text_input_field_escape path through FUN_101f60450 and presenter FUN_10141091c; do not apply response dismissal to that mode without further tracing.
+A rendered SwiftUI Button in FUN_1010aee08 uses action FUN_1010b5004 -> FUN_1010aedc0 -> FUN_101f604c0. This establishes an actual button using the same close operation; its label helper FUN_1010af148 remains untraced. The diagnostic reason string text_response_close_button in FUN_101f604c0 is also used by the follow-up Escape route, so it cannot uniquely prove a mouse click.
+Evidence: evidence/ux/response-dismiss-callers.json, response-close-button-action.json, response-close-control-wrappers.json and response-close-view-registration.json. Existing response-dismiss evidence explains cleanup and its limits. No key pressed or button clicked at runtime.
+
+CLOSE BUTTON VISUAL LABEL
+FUN_1010aee08 applies SwiftUI help text "Close" to the button already connected to dismissal. Label FUN_1010af148 builds an xmark system image using 9-point bold text in a 24-by-24 frame, with a circular white background at 10% opacity, a circular border and circular content shape. This identifies the close affordance and hover help; no explicit accessibilityLabel call occurs in these two retained functions, which is not proof that the complete accessibility tree lacks a label. Position, runtime contrast, hit behavior and VoiceOver output were not tested.
+Evidence: evidence/ux/response-close-button-label.json; action linkage in response-close-view-registration.json and response-close-control-wrappers.json.
+
+SIX-SECOND CAP PRODUCER LINK
+The six-second cap predicate FUN_101f606dc reads the same Published boolean written by FUN_101f977ac (keypaths 103233d60/103233d88). Response initialization FUN_101f99dbc sets it from FUN_102240800; response text delivery FUN_101f9b0a8 also sets it from that predicate when opening a response that was not already active. Dismissal cleanup resets it false. Thus the cap is tied to the state sampled when opening/initializing the response rather than directly to text length.
+FUN_102240800 requires FUN_102240688 true and excludes values 10 and 3 from FUN_10224190c. These helpers participate in the tutorial flow, but their precise field and enum mappings require further corroboration before naming the excluded stages here. A generic setter thunk FUN_101f97760 also exists, so this bounded direct-caller trace does not prove no other writes occur.
+Evidence: evidence/ux/response-short-duration-predicate.json, response-short-duration-property.json and response-short-duration-producers.json. No timer run or UI state changed.
+
+SHORT RESPONSE TIMER: EXACT TUTORIAL-STATE CONDITION
+FUN_102240688 compares current state FUN_101f616a8 with raw value 11 using FUN_102248820 and negates equality. FUN_10224190c normalizes values 11 and 12 to 11 and otherwise returns the current value. Combined with FUN_102240800, the six-second-cap source is false for raw states 11, 3 and 10, and true for the other represented values, including 12. Therefore the earlier shorthand "tutorial active" alone is insufficient: special state 12 also passes this predicate. Do not silently exclude that case.
+OnboardingTutorialStep metadata identifies step 3 as clickyInterview and step 10 as finale, consistent with existing tutorial evidence; the enclosing Published state's relationship to that step enum and the semantic names of 11/12 remain to be fully linked. Accordingly, the exact numeric condition is established, while a complete user-facing description of all eligible stages remains open.
+Evidence: evidence/ux/response-short-duration-tutorial-state.json, tutorial-state-access-and-comparison.json and evidence/swift-type-fields.json (OnboardingTutorialStep descriptor 1035aee04). This refines the cap producer chain without assuming every non-idle state is an exercise.
+
+TUTORIAL PHASE METADATA AND INVITATION CORROBORATION
+OnboardingTutorialPhase metadata (descriptor 1035aee20) declares running(OnboardingTutorialStep), inactive and invitePresented. The running payload's direct symbolic reference 1034cf604 resolves to OnboardingTutorialStep descriptor 1035aee04, which has the eleven stages already documented. The retained invitation operation FUN_102248d78 checks current phase against 11, then writes 12 through FUN_101f86140 before invitation presentation. This corroborates the existing onboarding report's inactive=11/invitation=12 interpretation, rather than interpreting 12 as another exercise.
+Accordingly, the short-timer predicate can be true while the tutorial invitation is presented, as well as during most running exercises; interview and finale are the excluded running step values. The setter/getter keypath identity for the invitation write still needs its final local check, and the indirect keypath type-reference slot contains encoded Mach-O pointer data rather than a plain runtime pointer. Preserve those distinctions when reusing the evidence.
+Evidence: evidence/ux/tutorial-phase-and-step-metadata.json, tutorial-invitation-phase-writer.json and tutorial-phase-symbolic-links.json, plus the previously retained numeric predicate. No app state changed.
+
+SIX-SECOND CAP STATE LINK VERIFIED
+FUN_101f86140 writes the same Published phase keypaths 103233fa0/103233fc8 read by FUN_101f616a8, then notifies FUN_101f85e48 with the previous phase. This closes the invitation-write/getter linkage. Combined with the phase metadata, numeric condition and producer chain above, the cap flag is initialized true for the invitation or running tutorial stages except clickyInterview and finale, and false for inactive/interview/finale. It is sampled at response initialization (or when response text opens an inactive response); these traces do not establish continuous recomputation when the tutorial changes stage during an existing response. Cleanup resets the flag. The six-second cap still applies to countdown time, excluding verified suspension periods, not an unconditional wall-clock disappearance.
+Evidence: evidence/ux/tutorial-phase-setter-link.json plus tutorial-state-access-and-comparison.json, response-short-duration-producers.json and tutorial-invitation-phase-writer.json. Earlier unresolved-condition statements are superseded by this connected interpretation. Runtime timing remains untested.
+
+FILE-UPLOAD APPROVAL CARD: ONE-TURN AND PERSISTENT CHOICES
+Upload approval presentation FUN_101e67570 supplies "Approve this time" and "Always approve" to shared card presenter FUN_101583378. Its explanatory-copy helper FUN_101e688c0 includes " is asking to add files from your Mac. A yes covers this turn." with a "Your job" fallback. Title helper FUN_101e67bf4 builds a destination/file description and uses "a website" when its optional site is absent. Complete file-name formatting and the final rendered control layout remain to trace.
+The card receives separate callbacks: FUN_101e69268 -> FUN_101e68cd0 resumes answer value 0; FUN_101e69320 -> FUN_101e68d2c returns 1; FUN_101e693d8 -> FUN_101e68d8c returns 2; FUN_101e69490 -> FUN_101e68dec sets the same always-approve preference used by Agents Settings to true and then returns 0. UploadApprovalAnswer metadata declares allowed, declined, unanswered, busy in order. The persistent-choice handler therefore both permits the current request and saves future automatic approval; the ordinary allowed callback only resumes its answer in the traced body.
+The exact shared-presenter parameter-to-button mapping, decline label, unanswered trigger and busy entry guard remain open. Do not equate "unanswered" with a specific timeout or Escape path yet. This establishes provided card copy and answer effects, not successful transmission or the scope of downstream file restrictions. No file was uploaded or preference changed.
+Evidence: evidence/ux/upload-approval-flow.json, upload-approval-answer-wrappers.json, swift-type-fields.json (UploadApprovalAnswer, ClickyUploadApproval) and agent-settings-storage-accessors.json (+0x18 file-upload preference).
+
+
+UPLOAD APPROVAL — TIMEOUT AND ACTION CLEANUP (2026-11-10)
+Scope: offline static analysis, v1.1.3 build 71. No target execution or account requests.
+
+The upload caller supplies a 120-second timeout to the shared consent-card
+presenter. FUN_101587018 multiplies this value by 1,000,000,000 before Swift
+Task.sleep(nanoseconds:). After waking, FUN_101587170 exits if cancelled or if
+there is no active consent ID. Otherwise it cleans up the card and invokes the
+optional unanswered callback, falling back to declined when that callback is
+absent. Upload supplies its unanswered callback, which returns answer 2.
+This is a scheduled timeout, not a guaranteed exact wall-clock dismissal time.
+
+Approve and decline wrappers (101586a2c / 101586b68) clean up before invoking
+the supplied answer. The optional Always approve callback is wrapped through
+the same approval cleanup. Cleanup 101583d04 cancels and clears timeoutTask,
+clears consentID, and passes the old ID to the presentation manager's removal
+helper 101535108. This prevents the normal cancelled timer from answering again.
+The Always approve callback's saved preference and allowed answer are documented
+above. No file transfer success is established by these consent callbacks.
+
+Evidence: evidence/ux/upload-approval-card-presenter.json,
+upload-consent-presenter-callbacks.json, upload-consent-timeout-and-actions.json,
+upload-consent-cleanup.json, upload-approval-flow.json,
+upload-approval-answer-wrappers.json (all under evidence/ux/).
+Remaining: exact visible decline/dismiss controls and their bindings; busy guard;
+downstream handling of unanswered; file restriction enforcement.
+
+
+UPLOAD APPROVAL — VISIBLE ACTION BINDINGS (2026-11-10)
+Static evidence: the shared consent controls builder 101541300 constructs the
+optional persistent-approval button first, the per-request approval button next,
+and a literal "Not now" button last. The persistent button is present when the
+model's optional title is present and uses the "infinity" system image. Upload
+supplies "Always approve" and "Approve this time" as documented above. Tuple
+construction order is established; screen orientation/position is not yet verified.
+
+"Not now" -> 101545764 -> 1015422e8 -> 101535824(0), which invokes declineConsent.
+Per-request approval -> 101545718 -> 10154228c -> 101535824(1), acceptConsent.
+Persistent approval -> 1015457b0 -> 101542048 -> 101535998, alwaysConsent.
+Presenter 101534adc stores those callbacks in ClickyDriveNotchState before
+publishing its consent model. Thus "Not now" yields declined for upload, while
+timeout yields unanswered. This does not establish Escape/outside-click behavior.
+
+Evidence under evidence/ux/: upload-presenter-model-entry.json,
+consent-action-callers.json, consent-button-bindings.json,
+consent-controls-builder.json. Direct-call scan covers the retained final.c;
+indirect calls and unrecovered functions remain outside that negative boundary.
+
+
+UPLOAD APPROVAL — OVERLAPPING REQUESTS (2026-11-10)
+Entry 101e66a3c switches to the main actor, then 101e66c54 checks the saved
+Always approve preference first. True returns allowed immediately, before busy
+checks and without creating a card. Otherwise an already-set isAsking byte at
+instance +0x18 returns busy (answer 3), rather than replacing the pending upload
+question. Two additional shared-notch state checks also return busy: a present
+optional consent model from 10152f530, or the present optional UUID predicate
+10152f6b0. The latter field's semantic name remains unresolved in this pass.
+
+Only after those guards pass does the function set isAsking=true and await the
+checked continuation that presents the card. Completion 101e673a4 calls
+101e6751c to reset isAsking=false before returning the answer. There is no queue,
+retry, or busy-message presentation in this inspected entry function. Caller
+behavior may supply those; it remains unverified. Saved Always approve bypasses
+this consent UI, not necessarily downstream file restrictions.
+
+Evidence: evidence/ux/upload-approval-entry-guard.json and
+upload-approval-busy-state.json. Earlier evidence maps +0x18 to isAsking and
+answer 3 to busy. No app launch or logged-in request was performed.
+
+
+UPLOAD APPROVAL — JOB GUIDANCE AFTER ANSWERING (2026-11-10)
+Static formatter 101cf8624 returns no error text for allowed. For declined it
+constructs "The user said no to adding [files] to [destination] this turn" and
+instructs the job not to retry or copy the file elsewhere to evade the decision;
+it should continue without the file and explain what is still needed. For
+unanswered it says the user has not answered, instructs the job to leave the page
+unchanged and end the turn explaining that approval is needed, and says the card
+returns when tried next turn. For busy it returns "HeyClicky is asking the user
+something else right now. Try this again in a moment."
+These are internal job/tool guidance strings, not proven verbatim chat messages
+or a deterministic guarantee that a generated response follows the instruction.
+Actual callers 101ceae80 and 101d06990 consume this formatter; full functions are
+retained in evidence. No fixed retry timer is established by the busy text.
+
+BrowserBridge 101cf7bc8 looks up uploadAnswers before invoking the approval
+handler. A cached answer returns directly. 101cf8200 normalizes absent handler
+answer (optional tag 4) to unanswered (2). It excludes busy (3) from caching;
+other answers are stored only when a supplied predicate succeeds and the key is
+still present in grants. This explains a retryable busy outcome but does not yet
+prove the cache key's identity/lifetime. Do not equate this partial trace with a
+verified cache reset on every turn boundary.
+
+Manager bridge 1020976ec calls the shared upload approval object; if its weak
+manager is gone it returns unanswered. 102097860/1020978e8 pass the result back.
+Evidence: evidence/ux/upload-answer-handling.json includes formatter, cache,
+manager bridge, equality helper and both formatter callers. No live target or
+account request was used. Remaining: cache lifetime/turn reset, exact final chat
+presentation, Escape/outside-click behavior, downstream file restrictions.
+
+
+UPLOAD APPROVAL — CACHE INVALIDATION EVIDENCE (2026-11-10)
+The answer is not consumed on its first lookup: 101cf7bc8 returns a stored answer
+without deleting it. Therefore approval can cover multiple operations sharing
+the same active key; it is not inherently one-upload-only.
+
+101cd4180 removes one uploadAnswers entry alongside the same key's grant,
+Chrome-unavailable marker, action timeout and turn browser usage. It derives that
+key through 101cd5394, which joins two supplied strings with "/". Session cleanup
+callers 101e9a89c and 101ea3808 call this helper before removing activeTasks
+entries; 101eb89b8 also calls it. Semantic identity of both string components and
+coverage of every turn exit still require verification.
+
+101ccb174 clears all uploadAnswers and replaces the bridge generation UUID,
+then revokes outstanding grants and clears commands. Direct callers include
+bridge shutdown 101cd2994 and session disconnect cleanup 101eba53c; other callers
+handle connection changes. This is an additional reset boundary, not proof that
+all keys survive until a normal turn ends. No persistent answer storage is shown
+in these helpers; Always approve remains a separate saved preference.
+
+Evidence: evidence/ux/upload-answer-cache-consumers.json,
+upload-cache-reset-callers.json, upload-cache-key-builder.json. Static-only;
+no permission-card interaction or target network traffic was generated.
+
+
+UPLOAD APPROVAL — CONTROL ROW LAYOUT (2026-11-10)
+The shared consent content 10153eaf8 places the action tuple in an HStack with
+8-point spacing and 42-point leading padding. Its preceding content row is a
+top-aligned HStack with 10-point spacing. Combined with 101541300's tuple order,
+the action row is Always approve (when present), Approve this time, Not now in
+source order. Localization/layout direction could affect rendered direction.
+
+The control wrapper 10154209c constructs ClickyGelButton (descriptor 103594d58,
+accessor 1005594d4) via 100552ce8. The constructor and recovered fields map its
+constants to cornerRadius=100, minimumHeight=34 and labelFontSize=13. The latter
+two optional values are present. These are layout inputs, not measured screenshot
+bounds. The persistent button uses the infinity image established earlier.
+
+Evidence: evidence/ux/consent-control-layout.json,
+consent-controls-container.json, consent-reusable-button-constructor.json;
+evidence/swift-type-fields.json entry ClickyGelButton. Keyboard/Escape and
+outside-click behavior remain unresolved; these builders alone do not prove
+keyboard handling or lack of it. No runtime target interaction was performed.

@@ -1,0 +1,20 @@
+LIVE CAPTURE VERIFIED: models/gemini-3.5-transcribe-live was sent by HeyClicky in client WebSocket JSON to generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained. Recovered from four retained flows on 2026-11-10. See live-model-evidence.json. This resolves the streaming model unknown in the historical notes below; batch and cleanup model identities remain unknown.
+
+HeyClicky dictation investigation — incomplete pending live model capture
+
+Target: installed HeyClicky 1.1.3, build 71. The downloaded DMG and installed executable were identified separately; their contents were not compared for exact equality.
+
+Main flow supported by artifact evidence:
+1. Dictation has a dedicated Gemini streaming wrapper using the shared OneBrainGeminiTranscriber.
+2. Its session endpoint is /v2/dictation/gemini-token on the configured HeyClicky API base.
+3. Decompiled token-response handling reads access_token, setup, and receipt. It serializes the returned setup dictionary under a setup key and constructs token authorization for a WebSocket request. The executable contains Google's BidiGenerateContentConstrained WebSocket endpoint.
+4. Embedded diagnostics explicitly describe falling back to batch transcription after streaming failure, and inserting raw streamed text if cleanup fails. Cached responses confirm this installation contacted /v2/dictation/transcribe and /v2/dictation/cleanup. Each cached response has text and raw_text fields.
+5. Text insertion components use macOS Accessibility focus information and include clipboard fallback. Diagnostics describe refusing insertion after focus loss and refusing blind paste during secure event input. Custom vocabulary and correction-learning components are present.
+
+Exact Gemini model: NOT VERIFIED. The server-supplied setup must be observed. The executable string gemini-3.8-flash-lite-tts is associated with voice output and should not be cited as the dictation model. The batch transcription and cleanup backends' exact model identities are also unknown.
+
+Other boundaries: PCM16 conversion is evidenced by class/field names and diagnostics; exact sample rate and chunk timing remain unverified. Presence of Apple Speech and OpenAI Realtime implementations does not establish their use by ordinary dictation. No backend source or live decrypted traffic has been obtained. No conclusion about server retention of recordings is supported.
+
+Evidence: token-parser.txt contains Hopper-generated pseudocode for ARM64 procedure 0x10163044c. findings.txt records hashes and the traced constructor addresses. These are static observations, not executed request traces.
+
+Capture status: Frida attachment was denied from both the agent shell and user Terminal, including sudo. A filtered mitmproxy script exists under /tmp/codex-heyclicky; installation remains pending because the agent shell cannot resolve pypi.org. No proxy or certificate trust changes were made. Hopper was stopped after causing memory pressure; no analysis process should be resumed for this task.

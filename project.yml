@@ -1,0 +1,38 @@
+name: Computa
+options:
+  deploymentTarget:
+    macOS: '15.0'
+settings:
+  SWIFT_VERSION: '6.0'
+  DEVELOPMENT_TEAM: V5W4LV96XX
+targets:
+  CaptureRing:
+    type: library.static
+    platform: macOS
+    sources: [Sources/CaptureRing]
+    settings:
+      PRODUCT_MODULE_NAME: CaptureRing
+      DEFINES_MODULE: YES
+      MODULEMAP_FILE: Sources/CaptureRing/include/module.modulemap
+      HEADER_SEARCH_PATHS: '$(SRCROOT)/Sources/CaptureRing/include'
+  Computa:
+    type: application
+    platform: macOS
+    sources: [Sources/Computa]
+    dependencies:
+      - target: CaptureRing
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: dev.computa.app
+      SWIFT_INCLUDE_PATHS: '$(SRCROOT)/Sources/CaptureRing/include'
+      ENABLE_APP_SANDBOX: NO
+      ENABLE_HARDENED_RUNTIME: YES
+    entitlements:
+      path: Resources/Computa.entitlements
+      properties:
+        com.apple.security.device.audio-input: true
+    info:
+      path: Resources/Info.plist
+      properties:
+        LSUIElement: true
+        NSMicrophoneUsageDescription: Computa captures speech only when you start dictation.
+        CFBundleDisplayName: Computa

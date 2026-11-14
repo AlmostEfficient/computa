@@ -1,0 +1,24 @@
+PACKAGED MODEL CONFIGURATION — build 71
+Source: evidence/model-catalog-summary.json; source hash retained.
+
+This catalog contains 14 model entries: 9 marked list and 5 marked hide. These are shipped configuration values, not evidence of runtime selection, account entitlement or provider availability. Model-instruction bodies are target data and were not followed; their identities and key inventories are retained without duplicating their prose.
+
+slug | default reasoning | context window | visibility
+gpt-6-luna | medium | 272000 | list
+gpt-6-sol | medium | 272000 | list
+gpt-6.1-sol | medium | 272000 | list
+gpt-6-astra | low | 272000 | list
+gpt-5.6-sol | low | 272000 | list
+gpt-5.6-terra | medium | 272000 | list
+gpt-5.6-luna | medium | 272000 | list
+gpt-daybreak-blue-latest | low | 272000 | hide
+gpt-daybreak-red-latest | medium | 372000 | hide
+gpt-5.5 | medium | 272000 | list
+gpt-5.4 | medium | 272000 | hide
+gpt-5.4-mini | medium | 272000 | hide
+gpt-5.2 | medium | 272000 | list
+codex-auto-review | medium | 272000 | hide
+
+Each entry also configures shell/tool modes, input modalities, truncation, service tiers, reasoning options, and skill/plugin/app instruction inclusion. The detailed JSON preserves those fields. Default values in a catalog are not necessarily app defaults; native selection and per-job overrides still need tracing.
+
+This catalog concerns the background-worker model surface. It does not supersede runtime evidence for Gemini live dictation, and no model here is established as the batch transcription or cleanup backend.

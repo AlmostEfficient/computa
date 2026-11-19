@@ -97,6 +97,9 @@ struct KeyEventRecord: Identifiable {
     private(set) var binding = HotkeyBinding.load()
     private(set) var mode = TapMode.none
     var onEvent: ((KeyEventRecord) -> Void)?
+    /// Escape pressed with no modifiers; return true if it was used (it is then swallowed).
+    var onEscape: (() -> Bool)?
+    private var swallowEscapeUp = false
     func set(_ binding: HotkeyBinding) { self.binding = binding; binding.save(); held = false }
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
@@ -169,6 +172,9 @@ struct KeyEventRecord: Identifiable {
             held = down
             handler?(KeyEdge(down: down, tapHost: tapHost, eventToTapMS: (0..<1000).contains(lag) ? lag : nil))
         }
+        if type == .keyDown && keyCode == Int64(kVK_Escape) && flags & HotkeyBinding.relevantModifiers == 0,
+           onEscape?() == true { swallowEscapeUp = true; return true }
+        if type == .keyUp && keyCode == Int64(kVK_Escape) && swallowEscapeUp { swallowEscapeUp = false; return true }
         if binding.isModifier {
             guard type == .flagsChanged, keyCode == binding.keyCode, let bit = HotkeyBinding.modifierMasks[keyCode] else { return false }
             let down = flags & bit != 0

@@ -70,6 +70,14 @@ struct SettingsView: View {
 
     private var dictationSection: some View {
         Section2("Dictation") {
+            Toggle(isOn: Binding(get: { model.warmMic }, set: { model.warmMic = $0 })) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Keep mic warm for 30 s").font(.system(size: 12, weight: .medium))
+                    Text("Back-to-back dictations keep their first word. The orange mic dot stays on meanwhile.")
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch).controlSize(.small)
             Text("Vocabulary — one per line, `Term: misheard, misheard`").font(.system(size: 12, weight: .medium)).padding(.top, 4)
             TextEditor(text: Binding(get: { model.vocabularyText }, set: { model.vocabularyText = $0 }))
                 .font(.system(size: 12, design: .monospaced))
@@ -77,7 +85,8 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
                 .padding(4)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
-
+            Text("Esc cancels a dictation. The mic starts as soon as the hotkey's modifiers are held.")
+                .font(.caption2).foregroundStyle(.secondary)
         }
     }
 

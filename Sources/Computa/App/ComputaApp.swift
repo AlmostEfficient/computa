@@ -55,18 +55,21 @@ private struct MenuContent: View {
     private var eventToTapMS: Double?
     private var startReturnMS = 0.0
     private var used = false
-    private var finishing = false
-    private var session: GeminiTranscriber?
-    private var wasWarm: Bool?
-    private var sendTask: Task<Void, Error>?
+    /// The dictation being recorded, if any.
+    private var current: Dictation?
+    /// Dictations still transcribing. A new one can start while these finish.
+    private var finishingDictations: [Dictation] = []
+    private var finishing: Bool { !finishingDictations.isEmpty }
     private var drainTask: Task<Void, Never>?
-    private var audio = Data()   // 16 kHz PCM16 of this dictation (32 kB/s), kept for replay if streaming fails
-    private var focus: Focus?
     private var selfTesting = false
     private let overlay = OverlayController()
-    /// Bumped on every new dictation and on cancel; late async work for an older one is discarded.
-    private var generation = 0
-
+    /// After a dictation the mic stays on until this time, so the next one starts with pre-roll.
+    private var warmUntil = Date.distantPast
+    private var idleTask: Task<Void, Never>?
+    var warmMic = UserDefaults.standard.object(forKey: "warmMic") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(warmMic, forKey: "warmMic"); if !warmMic { warmUntil = .distantPast; settleMic() } }
+    }
+    static let warmSeconds: TimeInterval = 30
     /// One entry per line: `Term` fixes its capitalisation; `Term: misheard, other misheard` also
     /// replaces those phrases with the term. Applied locally to the final text.
     var vocabularyText = UserDefaults.standard.string(forKey: "vocabulary") ?? "Computa\nGhostty: Ghosty, Ghostwriter" {
@@ -79,6 +82,10 @@ private struct MenuContent: View {
             MainActor.assumeIsolated { if let self, self.ready, !self.measureOnly { self.pool.warm() } }
         }
         overlay.model.onCancel = { [weak self] in self?.cancel() }
+        hotkey.onEscape = { [weak self] in
+            guard let self, self.current != nil || self.finishing else { return false }
+            self.cancel(); return true
+        }
         // The hotkey works (and the key feed shows events) independently of microphone setup.
         hotkey.onEvent = { [weak self] record in
             guard let self else { return }
@@ -159,75 +166,117 @@ private struct MenuContent: View {
         if trials > 0 { Task { await selfTest(trials) } }
     }
 
+    /// While the mic runs between dictations, keep only the last half second, and pause it once
+    /// the warm period is over.
+    private func startIdleTrim() {
+        guard idleTask == nil else { return }
+        idleTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard current == nil else { continue }
+                capture.trimIdle()
+                if Date() >= warmUntil { capture.pause(); break }
+            }
+            idleTask = nil
+        }
+    }
+    private func settleMic() {
+        guard current == nil, capture.running else { return }
+        if Date() >= warmUntil { capture.pause() } else { startIdleTrim() }
+    }
+
     /// Key-down path. Capture starts first; nothing that can block (Accessibility IPC, actor hops,
-    /// session handoff) runs before `capture.start()`.
+    /// session handoff) runs before it.
     func keyDown(_ edge: KeyEdge?) {
-        guard !finishing, !recording else { return }
+        guard ready, current == nil else { return }
         keyHost = edge?.tapHost ?? mach_absolute_time()
         eventToTapMS = edge?.eventToTapMS
+        let wasRunning = capture.running
         do { try capture.start() } catch { status = "Start failed: \(error)"; return }
+        capture.beginDictation(keepPreRoll: wasRunning)
         startReturnMS = Self.ms(since: keyHost)
         recording = true
-        generation += 1
+        let dictation = Dictation(preRolled: wasRunning)
+        current = dictation
         overlay.show()
         telemetry.signposter.emitEvent("CaptureStarted")
-        audio = Data(); session = nil; wasWarm = nil
         if !measureOnly {
             status = "Listening…"
-            sendTask = Task {
+            dictation.sendTask = Task {
                 let taken = await pool.take()
-                session = taken.session; wasWarm = taken.wasWarm
+                dictation.session = taken.session; dictation.wasWarm = taken.wasWarm
                 try await taken.ready.value
                 try await taken.session.begin()
             }
         } else { status = "Measuring • audio discarded" }
-        focus = measureOnly ? nil : Focus.current()
-        drainTask = Task { while !Task.isCancelled { pump(capture.drainPCM16()); overlay.model.push(capture.level); try? await Task.sleep(for: .milliseconds(20)) } }
+        drainTask = Task {
+            while !Task.isCancelled {
+                let pcm = capture.drainPCM16()
+                if !measureOnly { dictation.pump(pcm) }
+                dictation.peak = max(dictation.peak, capture.level)
+                overlay.model.push(capture.level)
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+        }
     }
 
-    private func pump(_ pcm: Data) {
-        guard !measureOnly, !pcm.isEmpty else { return }
-        audio.append(pcm)
-        let previous = sendTask
-        sendTask = Task { try await previous?.value; try await session?.send(pcm: pcm) }
+    /// Ends the recording. The mic stays warm (if enabled) for the next dictation.
+    private func stopRecording() {
+        drainTask?.cancel(); drainTask = nil
+        if let current, !measureOnly { current.pump(capture.drainPCM16(final: true)) }
+        current = nil; recording = false
+        if measureOnly || !warmMic || selfTesting { warmUntil = .distantPast; capture.pause() }
+        else { warmUntil = Date().addingTimeInterval(Self.warmSeconds); settleMic() }
     }
 
     func keyUp(_ edge: KeyEdge?) {
-        guard recording else { return }
+        guard let dictation = current else { return }
         let releaseHost = edge?.tapHost ?? mach_absolute_time()
-        capture.pause(); drainTask?.cancel(); recording = false
-        pump(capture.drainPCM16(final: true))
         let first = capture.firstHost
-        var trial = Trial(source: edge != nil ? "key" : selfTesting ? "selftest" : "manual", condition: used ? "paused" : "cold", sampleRate: capture.sampleRate,
+        stopRecording()
+        var trial = Trial(source: edge != nil ? "key" : selfTesting ? "selftest" : "manual",
+                          condition: dictation.preRolled ? "warm-mic" : used ? "paused" : "cold", sampleRate: capture.sampleRate,
                           eventToTapMS: eventToTapMS, startReturnMS: startReturnMS,
-                          firstCallbackMS: first >= keyHost && first != 0 ? AVAudioTime.seconds(forHostTime: first - keyHost) * 1000 : nil,
+                          firstCallbackMS: !dictation.preRolled && first >= keyHost && first != 0 ? AVAudioTime.seconds(forHostTime: first - keyHost) * 1000 : nil,
                           droppedFrames: capture.dropped)
         used = true
         guard !measureOnly else { log(trial); status = "Saved capture timing"; overlay.hide(); return }
-        finishing = true; status = "Transcribing…"
+        // Tap-tap with nothing said: don't wait on a server that has nothing to transcribe.
+        if Date().timeIntervalSince(dictation.startedAt) < 0.35 || dictation.peak < Self.speechLevel {
+            dictation.discard()
+            overlay.hide()
+            status = "Nothing heard"
+            return
+        }
+        finishingDictations.append(dictation)
+        status = "Transcribing…"
         overlay.model.phase = .transcribing
-        let pending = sendTask, audio = audio, focus = focus, session = session, mine = generation
+        let vocabulary = vocabulary
         Task {
             var text: String?
             do {
-                try await pending?.value
-                guard let session else { throw GeminiError.protocolFailure }
+                try await dictation.sendTask?.value
+                guard let session = dictation.session else { throw GeminiError.protocolFailure }
                 text = try await session.finish().text
             } catch {
                 trace("stream failed: \(error); replaying")
-                await session?.cancel()
-                if mine == generation { text = try? await Self.replay(audio); trial.fallback = true }
+                await dictation.session?.cancel()
+                if !dictation.cancelled { text = try? await Self.replay(dictation.audio); trial.fallback = true }
             }
-            guard mine == generation else { return }   // cancelled, or a newer dictation owns the state
-            finishing = false; self.session = nil; sendTask = nil; self.audio = Data()
-            trial.warmSession = wasWarm
+            finishingDictations.removeAll { $0 === dictation }
+            if current == nil && !finishing { overlay.hide() }
+            guard !dictation.cancelled else { return }
+            trial.warmSession = dictation.wasWarm
             trial.releaseToTextMS = Self.ms(since: releaseHost)
-            overlay.hide()
-            trace("final text (\(trial.releaseToTextMS.map { Int($0) } ?? -1) ms, warm \(String(describing: wasWarm)), fallback \(trial.fallback == true)): \(text ?? "<none>")")
-            status = text.map { Inserter.insert(VocabularyEntry.apply(vocabulary, to: $0), into: focus) } ?? "Transcription failed. Check connectivity and Gemini Keychain access."
+            trace("final text (\(trial.releaseToTextMS.map { Int($0) } ?? -1) ms, warm \(String(describing: dictation.wasWarm)), fallback \(trial.fallback == true)): \(text ?? "<none>")")
+            if let text { status = Inserter.insert(VocabularyEntry.apply(vocabulary, to: text), into: nil) }
+            else { status = "Transcription failed. Check your connection." }
             log(trial)
         }
     }
+
+    /// Level (0…1, −55…−10 dBFS) a dictation must reach at least once to count as speech (≈ −48 dBFS).
+    static let speechLevel: Float = 0.15
 
     /// The next key, combination, or lone modifier pressed becomes the push-to-talk hotkey. Esc cancels.
     func changeHotkey() {
@@ -248,13 +297,11 @@ private struct MenuContent: View {
     }
     func cancelHotkeyChange() { hotkey.cancelRecording() }
 
-    /// The overlay's X: drop the dictation whether it is still listening or already transcribing.
+    /// The overlay's X or Escape: drop the recording and anything still transcribing.
     func cancel() {
-        generation += 1
-        if recording { capture.pause(); drainTask?.cancel(); recording = false }
-        let session = session
-        Task { await session?.cancel() }
-        self.session = nil; sendTask = nil; audio = Data(); finishing = false
+        if let current { stopRecording(); current.discard() }
+        for dictation in finishingDictations { dictation.discard() }
+        finishingDictations.removeAll()
         overlay.hide()
         status = "Cancelled"
     }
@@ -358,5 +405,30 @@ private struct MenuContent: View {
     private static func ms(since host: UInt64) -> Double {
         let now = mach_absolute_time()
         return now > host ? AVAudioTime.seconds(forHostTime: now - host) * 1000 : 0
+    }
+}
+
+/// One press-to-release (or press-to-press) recording and its streaming session.
+@MainActor final class Dictation {
+    let startedAt = Date()
+    let preRolled: Bool
+    var session: GeminiTranscriber?
+    var wasWarm: Bool?
+    var sendTask: Task<Void, Error>?
+    /// 16 kHz PCM16 (32 kB/s), kept for replay if streaming fails.
+    private(set) var audio = Data()
+    var peak: Float = 0
+    private(set) var cancelled = false
+    init(preRolled: Bool) { self.preRolled = preRolled }
+    func pump(_ pcm: Data) {
+        guard !pcm.isEmpty, !cancelled else { return }
+        audio.append(pcm)
+        let previous = sendTask
+        sendTask = Task { try await previous?.value; try await self.session?.send(pcm: pcm) }
+    }
+    func discard() {
+        cancelled = true
+        let session = session
+        Task { await session?.cancel() }
     }
 }

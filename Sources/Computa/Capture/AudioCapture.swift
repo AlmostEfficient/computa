@@ -94,8 +94,43 @@ final class Resampler {
             return noErr
         }
     }
-    func start() throws { ring_reset(queue.pointer); resampler?.reset(); try engine.start() }
-    func pause() { engine.pause() }
+    /// The engine is capturing (dictating, armed by the hotkey's modifiers, or kept warm after a dictation).
+    private(set) var running = false
+    /// Recent audio kept while running between dictations, so a new one can start with it.
+    private var preRoll: [Float] = []
+    /// Audio to convert ahead of the ring's contents at the start of a dictation.
+    private var prefix: [Float] = []
+    static let preRollSeconds = 0.5
+
+    func start() throws {
+        guard !running else { return }
+        ring_reset(queue.pointer); preRoll = []
+        try engine.start()
+        running = true
+    }
+    func pause() { engine.pause(); running = false; preRoll = []; prefix = [] }
+    /// While running without a dictation: drop everything but the last `preRollSeconds` of audio.
+    func trimIdle() {
+        guard running else { return }
+        absorbRing()
+    }
+    /// Starts a dictation on the running engine. With `keepPreRoll`, the last half second captured
+    /// before this call becomes the start of the dictation (warm mic or modifier arming).
+    func beginDictation(keepPreRoll: Bool) {
+        resampler?.reset(); level = 0
+        if keepPreRoll { absorbRing(); prefix = preRoll } else { prefix = [] }
+        preRoll = []
+    }
+    private func absorbRing() {
+        var samples = [Float](repeating: 0, count: 8192)
+        while true {
+            let count = ring_read(queue.pointer, &samples, samples.count)
+            if count == 0 { break }
+            preRoll.append(contentsOf: samples[0..<count])
+        }
+        let keep = Int(sampleRate * Self.preRollSeconds)
+        if preRoll.count > keep { preRoll.removeFirst(preRoll.count - keep) }
+    }
     /// Drains everything captured so far as 16 kHz PCM16. `final` flushes the converter's tail.
     /// Input level of the most recent drain, 0…1 (−55 dBFS → 0, −10 dBFS → 1). For the on-screen meter.
     private(set) var level: Float = 0
@@ -103,6 +138,7 @@ final class Resampler {
         var out = Data()
         var samples = [Float](repeating: 0, count: 8192)
         var energy: Float = 0, total = 0
+        if !prefix.isEmpty { out.append(resampler?.convert(prefix) ?? Data()); prefix = [] }
         while true {
             let count = ring_read(queue.pointer, &samples, samples.count)
             if count == 0 { break }

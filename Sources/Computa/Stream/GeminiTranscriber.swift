@@ -62,10 +62,12 @@ actor GeminiTranscriber: StreamingTranscriber {
         self.socket = socket; socket.resume()
         let setupTimeout = Task { try await Task.sleep(for: .seconds(15)); socket.cancel(with: .goingAway, reason: nil) }
         defer { setupTimeout.cancel() }
+        // Vocabulary hints are not sent: this model ignores systemInstruction and context text
+        // (tested 2026-11-14). Terms are applied locally after transcription instead.
         try await write(["setup": ["model": "models/gemini-3.5-transcribe-live", "generationConfig": ["responseModalities": ["TEXT"]], "inputAudioTranscription": [:], "realtimeInputConfig": ["automaticActivityDetection": ["disabled": true]]]])
-        let setup = try await Self.read(socket)
-        trace("setup reply \(Self.describe(setup))")
-        guard setup["setupComplete"] != nil else { throw GeminiError.protocolFailure }
+        let reply = try await Self.read(socket)
+        trace("setup reply \(Self.describe(reply))")
+        guard reply["setupComplete"] != nil else { throw GeminiError.protocolFailure }
         state = .ready
         // Read from the start so a server close or goAway while idle marks the session dead.
         reader = Task {
@@ -115,7 +117,8 @@ actor GeminiTranscriber: StreamingTranscriber {
     }
     func finish() async throws -> Final {
         guard let socket, let reader else { throw GeminiError.protocolFailure }
-        let timeout = Task { try await Task.sleep(for: .seconds(10)); socket.cancel(with: .goingAway, reason: nil) }
+        // The final normally arrives 0.3–0.6 s after activityEnd; don't let a silent server hold the UI.
+        let timeout = Task { try await Task.sleep(for: .seconds(4)); socket.cancel(with: .goingAway, reason: nil) }
         defer { timeout.cancel(); socket.cancel(with: .normalClosure, reason: nil); state = .dead }
         trace("activityEnd sent")
         try await write(["realtimeInput": ["activityEnd": [:]]])

@@ -35,3 +35,11 @@ import CaptureRing
     let peak = samples.map { abs(Int($0)) }.max() ?? 0
     #expect(peak > 15_000 && peak < 18_000)   // ≈ 0.5 × 32767
 }
+@Test func vocabularyReplacesMishearingsAndFixesCase() {
+    let entries = VocabularyEntry.parse("Computa: computer\nGhostty: Ghosty, ghost tea, Ghostwriter\n\nAPI")
+    #expect(entries.count == 3)
+    #expect(VocabularyEntry.apply(entries, to: "Open computer and start dictating into Ghosty.") == "Open Computa and start dictating into Ghostty.")
+    #expect(VocabularyEntry.apply(entries, to: "use the api in ghost tea") == "use the API in Ghostty")
+    // Whole words only: no replacement inside other words.
+    #expect(VocabularyEntry.apply(entries, to: "computers and Ghostwriters") == "computers and Ghostwriters")
+}

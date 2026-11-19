@@ -11,6 +11,7 @@ struct SettingsView: View {
             HStack(alignment: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: 20) {
                     hotkeySection
+                    dictationSection
                     permissionsSection
                     testSection
                 }
@@ -21,7 +22,7 @@ struct SettingsView: View {
                     .frame(width: 380)
             }
         }
-        .frame(height: 520)
+        .frame(height: 720)
         .onAppear { NSApp.activate() }
     }
 
@@ -64,6 +65,19 @@ struct SettingsView: View {
                 Button("Fn") { model.setHotkey(HotkeyBinding(keyCode: 63, modifiers: 0, isModifier: true)) }
             }
             .controlSize(.small)
+        }
+    }
+
+    private var dictationSection: some View {
+        Section2("Dictation") {
+            Text("Vocabulary — one per line, `Term: misheard, misheard`").font(.system(size: 12, weight: .medium)).padding(.top, 4)
+            TextEditor(text: Binding(get: { model.vocabularyText }, set: { model.vocabularyText = $0 }))
+                .font(.system(size: 12, design: .monospaced))
+                .frame(height: 70)
+                .scrollContentBackground(.hidden)
+                .padding(4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
+
         }
     }
 

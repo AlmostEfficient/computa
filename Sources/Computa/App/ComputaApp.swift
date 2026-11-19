@@ -67,6 +67,13 @@ private struct MenuContent: View {
     /// Bumped on every new dictation and on cancel; late async work for an older one is discarded.
     private var generation = 0
 
+    /// One entry per line: `Term` fixes its capitalisation; `Term: misheard, other misheard` also
+    /// replaces those phrases with the term. Applied locally to the final text.
+    var vocabularyText = UserDefaults.standard.string(forKey: "vocabulary") ?? "Computa\nGhostty: Ghosty, Ghostwriter" {
+        didSet { UserDefaults.standard.set(vocabularyText, forKey: "vocabulary") }
+    }
+    var vocabulary: [VocabularyEntry] { VocabularyEntry.parse(vocabularyText) }
+
     init() {
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { if let self, self.ready, !self.measureOnly { self.pool.warm() } }
@@ -217,7 +224,7 @@ private struct MenuContent: View {
             trial.releaseToTextMS = Self.ms(since: releaseHost)
             overlay.hide()
             trace("final text (\(trial.releaseToTextMS.map { Int($0) } ?? -1) ms, warm \(String(describing: wasWarm)), fallback \(trial.fallback == true)): \(text ?? "<none>")")
-            status = text.map { Inserter.insert($0, into: focus) } ?? "Transcription failed. Check connectivity and Gemini Keychain access."
+            status = text.map { Inserter.insert(VocabularyEntry.apply(vocabulary, to: $0), into: focus) } ?? "Transcription failed. Check connectivity and Gemini Keychain access."
             log(trial)
         }
     }

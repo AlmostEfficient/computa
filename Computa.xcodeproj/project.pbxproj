@@ -21,6 +21,7 @@
 		E81FBAA2D949EA6E045AF89B /* Overlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F764A26409E45598F9D853 /* Overlay.swift */; };
 		F028EFE58382219B3A236D20 /* ComputaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D29712628D1D562CEFD262 /* ComputaApp.swift */; };
 		F1437559979920FF6050921D /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C40328FEB1159DE0607E28 /* Hotkey.swift */; };
+		F21C89995E05D1A4239951F2 /* Vocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89ED219474092210A44B5A2C /* Vocabulary.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 		5FB1C95E5C3A72E162D414E4 /* AudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCapture.swift; sourceTree = "<group>"; };
 		70DA817A936D0A04882C1F93 /* Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Focus.swift; sourceTree = "<group>"; };
 		85B003384A3304C3FEC15375 /* StreamingTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTranscriber.swift; sourceTree = "<group>"; };
+		89ED219474092210A44B5A2C /* Vocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vocabulary.swift; sourceTree = "<group>"; };
 		8B79C8989A7C557ACD48C0A8 /* GeminiTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTranscriber.swift; sourceTree = "<group>"; };
 		960EA941E7CBE70FB6345B39 /* libCaptureRing.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libCaptureRing.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A8B17AFDC5D3D1644C82B8D0 /* CaptureRing.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CaptureRing.h; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				FD83827AD88232DF7DD5CC3F /* Inserter.swift */,
+				89ED219474092210A44B5A2C /* Vocabulary.swift */,
 			);
 			path = Insert;
 			sourceTree = "<group>";
@@ -296,6 +299,7 @@
 				7D928A8C50D90EED29F98943 /* SettingsView.swift in Sources */,
 				C3F1FAE4F64387755E7AAFC5 /* StreamingTranscriber.swift in Sources */,
 				8C27D2169849ED31A7C2FE78 /* Telemetry.swift in Sources */,
+				F21C89995E05D1A4239951F2 /* Vocabulary.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

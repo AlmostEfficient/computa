@@ -61,6 +61,7 @@ private struct MenuContent: View {
     private var finishingDictations: [Dictation] = []
     private var finishing: Bool { !finishingDictations.isEmpty }
     private var drainTask: Task<Void, Never>?
+    private var releaseTask: Task<Void, Never>?
     private var selfTesting = false
     private let overlay = OverlayController()
     /// After a dictation the mic stays on until this time, so the next one starts with pre-roll.
@@ -222,6 +223,7 @@ private struct MenuContent: View {
 
     /// Ends the recording. The mic stays warm (if enabled) for the next dictation.
     private func stopRecording() {
+        releaseTask?.cancel(); releaseTask = nil
         drainTask?.cancel(); drainTask = nil
         if let current, !measureOnly { current.pump(capture.drainPCM16(final: true)) }
         current = nil; recording = false
@@ -230,8 +232,19 @@ private struct MenuContent: View {
     }
 
     func keyUp(_ edge: KeyEdge?) {
-        guard let dictation = current else { return }
+        guard let dictation = current, releaseTask == nil else { return }
         let releaseHost = edge?.tapHost ?? mach_absolute_time()
+        if measureOnly || selfTesting { completeKeyUp(edge, releaseHost: releaseHost); return }
+        releaseTask = Task { [weak self, weak dictation] in
+            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+            guard let self, let dictation, self.current === dictation, !dictation.cancelled else { return }
+            self.releaseTask = nil
+            self.completeKeyUp(edge, releaseHost: releaseHost)
+        }
+    }
+
+    private func completeKeyUp(_ edge: KeyEdge?, releaseHost: UInt64) {
+        guard let dictation = current else { return }
         let first = capture.firstHost
         stopRecording()
         var trial = Trial(source: edge != nil ? "key" : selfTesting ? "selftest" : "manual",

@@ -3,7 +3,7 @@ import Security
 
 /// Debug trace to stderr: message types and sizes, never audio.
 func trace(_ message: @autoclosure () -> String) {
-    FileHandle.standardError.write(Data("[gemini \(String(format: "%.3f", Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1000)))] \(message())\n".utf8))
+    // Do not persist raw provider messages, transcripts, or token-bearing errors.
 }
 
 enum GeminiCredentials {

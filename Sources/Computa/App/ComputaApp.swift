@@ -39,6 +39,12 @@ private struct MenuContent: View {
     }
     var idleStatus: String { toggleMode ? "Press \(hotkeyName) to start, again to stop" : "Hold \(hotkeyName) to dictate" }
     var keyLog: [KeyEventRecord] = []
+    var keyFeedEnabled = false {
+        didSet {
+            hotkey.recordEvents = keyFeedEnabled
+            if !keyFeedEnabled { keyLog.removeAll() }
+        }
+    }
     var tapMode = Hotkey.TapMode.none
     var micGranted = false
     var accessibilityGranted = false
@@ -89,7 +95,7 @@ private struct MenuContent: View {
         }
         // The hotkey works (and the key feed shows events) independently of microphone setup.
         hotkey.onEvent = { [weak self] record in
-            guard let self else { return }
+            guard let self, self.keyFeedEnabled else { return }
             keyLog.insert(record, at: 0)
             if keyLog.count > 40 { keyLog.removeLast(keyLog.count - 40) }
         }

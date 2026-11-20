@@ -1,0 +1,47 @@
+Computa memory investigation — 2026-11-20
+Live process 58344, approximately 2h50m uptime, 798.4 MiB footprint.
+Heap snapshot showed 9,848 retained key-event rows despite the model cap of 40.
+Four Text views per event explain approximately 39,000 retained text drawing objects.
+The lazy UUID-keyed keyboard event feed was retaining historical row rendering state.
+Audio and session counters were returning to their expected idle values.
+
+Fix: debug feed off by default; skip diagnostic event construction when off;
+replace LazyVStack with VStack and reuse row identities by bounded slot index;
+disable and clear the feed when settings disappears.
+
+Verification: signed Xcode build passed; four existing unit tests passed.
+An isolated offscreen NSHostingView using the revised KeyFeed received 10,000
+synthetic model updates (no keyboard injection, microphone or visible window).
+This validates the isolated rendering component, not foreground shortcut behavior.
+Footprint readings in bytes:
+rows=1000 footprint=17285792 status=0
+rows=2000 footprint=17318560 status=0
+rows=3000 footprint=17318560 status=0
+rows=4000 footprint=17302176 status=0
+rows=5000 footprint=17302176 status=0
+rows=6000 footprint=17302176 status=0
+rows=7000 footprint=17302176 status=0
+rows=8000 footprint=17302176 status=0
+rows=9000 footprint=17334944 status=0
+rows=10000 footprint=17334944 status=0
+
+Selected pre-fix heap evidence (types/counts only):
+Physical footprint:         798.4M
+   89311  164841920    1845.7   Swift._DictionaryStorage<Swift.ObjectIdentifier, SwiftUI.(AnyTrackedValue in $233cb3d14)>  Swift   libswiftCore.dylib
+    9848    4411904     448.0   LazyLayoutCacheItem                               Swift   SwiftUICore
+    9848    1575680     160.0   SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>.Item<>  Swift   SwiftUI
+       1     409600  409600.0   Swift._DictionaryStorage<Foundation.UUID, SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>.Item<>>  Swift   libswiftCore.dylib
+       1        448     448.0   SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>  Swift   SwiftUI
+       1         20      20.0   SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>.Evictor<>  Swift   SwiftUI
+       1         16      16.0   SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>.Init<>  Swift   SwiftUI
+       1         12      12.0   SwiftUI.ForEachState<Swift.Array<Computa.KeyEventRecord>, Foundation.UUID, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.HStack<SwiftUI.TupleView<(SwiftUI.Text, SwiftUI.ModifiedContent<SwiftUI.ModifiedContent<SwiftUI.Text, SwiftUI._FrameLayout>, SwiftUI._ForegroundStyleModifier<SwiftUI.HierarchicalShapeStyle>>, SwiftUI.Text, SwiftUI.Spacer, SwiftUI.Text)>>, SwiftUI._EnvironmentKeyWritingModifier<Swift.Optional<SwiftUI.Font>>>, SwiftUI._PaddingLayout>, SwiftUI._PaddingLayout>, SwiftUI._BackgroundStyleModifier<SwiftUI.Color>>>.Info<>  Swift   SwiftUI
+
+Follow-up normal use: PID 25926, 17:29:58–17:54:36 NZDT.
+27 dictation starts, peak footprint 67.97 MiB; all 27 dictation objects released.
+The app subsequently crashed at 17:54:56 with SIGBUS / KERN_MEMORY_ERROR
+at an executable mapped-file address. Crash report:
+Computa-2026-11-20-175508.ips (preserved in macOS DiagnosticReports).
+At 17:54:57 kernel/APFS logs show Abundance reloading after unclean unmount
+and mounting again. Strong evidence of executable backing-store loss, not an
+out-of-memory termination. Underlying disk/cable/disconnection cause unknown.
+Mitigation: install and run app from internal ~/Applications.

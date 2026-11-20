@@ -97,6 +97,7 @@ struct KeyEventRecord: Identifiable {
     private(set) var binding = HotkeyBinding.load()
     private(set) var mode = TapMode.none
     var onEvent: ((KeyEventRecord) -> Void)?
+    var recordEvents = false
     /// Escape pressed with no modifiers; return true if it was used (it is then swallowed).
     var onEscape: (() -> Bool)?
     private var swallowEscapeUp = false
@@ -159,7 +160,7 @@ struct KeyEventRecord: Identifiable {
         defer {
             let repeatKey = type == .keyDown && event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             let kind = type == .flagsChanged ? "mod" : type == .keyDown ? (repeatKey ? "repeat" : "down") : "up"
-            if !repeatKey {
+            if recordEvents && !repeatKey {
                 onEvent?(KeyEventRecord(kind: kind, keyCode: keyCode, key: HotkeyBinding.keyName(keyCode),
                                         modifiers: HotkeyBinding.modifierString(flags), matched: wasHeld != held))
             }

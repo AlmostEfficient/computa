@@ -59,3 +59,11 @@ No hardware latency, cloud latency, accuracy, RSS, or idle wakeup target has bee
 Deepgram wire format reference: https://developers.deepgram.com/reference/speech-to-text/listen-streaming
 
 Gemini references: https://ai.google.dev/gemini-api/docs/live-api/live-transcribe and https://ai.google.dev/gemini-api/docs/live-api/ephemeral-tokens
+
+## Memory and crash investigation — 2026-11-20
+
+The live key-event feed retained 9,848 historical SwiftUI rows although its data array held only 40. The feed now defaults off, uses an eager layout with bounded row identities, and disables itself when settings closes. The isolated 10,000-update check stayed around 16.5 MiB. Subsequent normal use completed 27 dictation starts with a peak process footprint of 68 MiB. Evidence is in `bench/memory-investigation-2026-11-20.txt`.
+
+Temporary memory instrumentation has been removed; existing local diagnostic files are preserved. Raw provider debug output is disabled to avoid logging transcripts and token URLs.
+
+A separate 17:54:56 crash was an executable-page read failure while running from Abundance; system logs show that volume remounting after an unclean unmount at 17:54:57. Run the installed copy at `~/Applications/Computa.app` on the internal drive, rather than the build product on the external volume. The evidence does not identify why the drive disconnected.

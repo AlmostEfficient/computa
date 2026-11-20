@@ -24,6 +24,7 @@ struct SettingsView: View {
         }
         .frame(height: 720)
         .onAppear { NSApp.activate() }
+        .onDisappear { model.keyFeedEnabled = false }
     }
 
     private var header: some View {
@@ -85,7 +86,7 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
                 .padding(4)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.1)))
-            Text("Esc cancels a dictation. The mic starts as soon as the hotkey's modifiers are held.")
+            Text("Esc cancels a dictation. Capture starts when the full shortcut is pressed.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
     }
@@ -156,22 +157,23 @@ private struct KeyFeed: View {
             HStack {
                 Text("LIVE KEY EVENTS").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
                 Spacer()
-                Button("Clear") { model.keyLog.removeAll() }.controlSize(.small)
+                Toggle("Debug feed", isOn: Binding(get: { model.keyFeedEnabled }, set: { model.keyFeedEnabled = $0 })).controlSize(.small)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             Divider()
             if model.keyLog.isEmpty {
                 VStack(spacing: 6) {
-                    Text(model.tapMode == .none ? "Not listening to keys" : "Press any key")
+                    Text(!model.keyFeedEnabled ? "Key-event logging is off" : model.tapMode == .none ? "Not listening to keys" : "Press any key")
                         .font(.system(size: 13, weight: .medium))
-                    Text(model.tapMode == .none ? "Grant Input Monitoring or Accessibility." : "Every key event Computa sees shows up here. Rows that started or stopped dictation are highlighted.")
+                    Text("Enable the debug feed only when diagnosing a shortcut. Dictation works with it off.")
                         .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity).padding(24)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(model.keyLog) { event in
+                    VStack(spacing: 0) {
+                        ForEach(model.keyLog.indices, id: \.self) { index in
+                            let event = model.keyLog[index]
                             HStack(spacing: 8) {
                                 Text(Self.time.string(from: event.time)).foregroundStyle(.secondary)
                                 Text(event.kind).frame(width: 44, alignment: .leading).foregroundStyle(.secondary)

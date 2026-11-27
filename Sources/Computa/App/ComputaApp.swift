@@ -23,7 +23,10 @@ private struct MenuContent: View {
         Text(model.status)
         Text("Hotkey: \(model.hotkeyName)")
         Divider()
+        if model.busy { Button("Cancel Dictation") { model.cancel() } }
+        Button("Copy Last Transcript") { model.copyLastTranscript() }.disabled(model.lastTranscript == nil)
         Button("Open Computa…") { openWindow(id: "main"); NSApp.activate() }
+        Button("Restart Computa") { AppModel.relaunch() }
         Button("Quit") { NSApplication.shared.terminate(nil) }
     }
 }
@@ -66,6 +69,17 @@ private struct MenuContent: View {
     /// Dictations still transcribing. A new one can start while these finish.
     private var finishingDictations: [Dictation] = []
     private var finishing: Bool { !finishingDictations.isEmpty }
+    /// Recording or still transcribing: the menu offers Cancel.
+    var busy = false
+    /// The most recent transcript, kept in memory only (never written to disk).
+    var lastTranscript: String?
+    func copyLastTranscript() {
+        guard let lastTranscript else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lastTranscript, forType: .string)
+        status = "Copied last transcript"
+    }
+    private func updateBusy() { busy = current != nil || finishing }
     private var drainTask: Task<Void, Never>?
     private var releaseTask: Task<Void, Never>?
     private var selfTesting = false
@@ -121,6 +135,7 @@ private struct MenuContent: View {
         accessibilityGranted = AXIsProcessTrusted()
         inputMonitoringGranted = CGPreflightListenEventAccess()
         if hotkey.mode != .active && (accessibilityGranted || (hotkey.mode == .none && inputMonitoringGranted)) { hotkey.install() }
+        hotkey.ensureEnabled()
         tapMode = hotkey.mode
         if micGranted && !ready && !setupFailed { setUp() }
     }
@@ -205,6 +220,7 @@ private struct MenuContent: View {
         recording = true
         let dictation = Dictation(preRolled: wasRunning)
         current = dictation
+        updateBusy()
         overlay.show()
         telemetry.signposter.emitEvent("CaptureStarted")
         if !measureOnly {
@@ -233,6 +249,7 @@ private struct MenuContent: View {
         drainTask?.cancel(); drainTask = nil
         if let current, !measureOnly { current.pump(capture.drainPCM16(final: true)) }
         current = nil; recording = false
+        updateBusy()
         if measureOnly || !warmMic || selfTesting { warmUntil = .distantPast; capture.pause() }
         else { warmUntil = Date().addingTimeInterval(Self.warmSeconds); settleMic() }
     }
@@ -268,27 +285,45 @@ private struct MenuContent: View {
             return
         }
         finishingDictations.append(dictation)
+        updateBusy()
         status = "Transcribing…"
         overlay.model.phase = .transcribing
         let vocabulary = vocabulary
         Task {
             var text: String?
             do {
-                try await dictation.sendTask?.value
-                guard let session = dictation.session else { throw GeminiError.protocolFailure }
-                text = try await session.finish().text
+                // Hard limit: a stalled socket can hold a send or receive open indefinitely, which
+                // used to leave the app on "Transcribing…" for good. Cancelling the session fails
+                // every pending call on it.
+                text = try await Self.deadline(Self.streamSeconds, onTimeout: { Task { await dictation.session?.cancel() } }) {
+                    try await dictation.sendTask?.value
+                    guard let session = dictation.session else { throw GeminiError.protocolFailure }
+                    return try await session.finish().text
+                }
             } catch {
                 trace("stream failed: \(error); replaying")
                 await dictation.session?.cancel()
-                if !dictation.cancelled { text = try? await Self.replay(dictation.audio); trial.fallback = true }
+                if !dictation.cancelled {
+                    let replay = GeminiTranscriber(), audio = dictation.audio
+                    text = try? await Self.deadline(Self.replaySeconds, onTimeout: { Task { await replay.cancel() } }) {
+                        try await Self.replay(audio, on: replay)
+                    }
+                    trial.fallback = true
+                }
             }
             finishingDictations.removeAll { $0 === dictation }
+            updateBusy()
             if current == nil && !finishing { overlay.hide() }
             guard !dictation.cancelled else { return }
             trial.warmSession = dictation.wasWarm
             trial.releaseToTextMS = Self.ms(since: releaseHost)
             trace("final text (\(trial.releaseToTextMS.map { Int($0) } ?? -1) ms, warm \(String(describing: dictation.wasWarm)), fallback \(trial.fallback == true)): \(text ?? "<none>")")
-            if let text { status = Inserter.insert(VocabularyEntry.apply(vocabulary, to: text), into: nil) }
+            if let text {
+                let final = VocabularyEntry.apply(vocabulary, to: text)
+                let trimmed = final.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { lastTranscript = trimmed }
+                status = Inserter.insert(final, into: nil)
+            }
             else { status = "Transcription failed. Check your connection." }
             log(trial)
         }
@@ -321,13 +356,13 @@ private struct MenuContent: View {
         if let current { stopRecording(); current.discard() }
         for dictation in finishingDictations { dictation.discard() }
         finishingDictations.removeAll()
+        updateBusy()
         overlay.hide()
         status = "Cancelled"
     }
 
     /// Fallback: a fresh session fed the whole recording, so a dead stream does not lose the dictation.
-    private static func replay(_ audio: Data) async throws -> String {
-        let session = GeminiTranscriber()
+    private static func replay(_ audio: Data, on session: GeminiTranscriber = GeminiTranscriber()) async throws -> String {
         try await session.connect()
         try await session.begin()
         var offset = 0
@@ -336,6 +371,38 @@ private struct MenuContent: View {
             try await session.send(pcm: audio.subdata(in: offset..<end)); offset = end
         }
         return try await session.finish().text
+    }
+
+    /// Seconds from release for the live stream to deliver text, then for the replay.
+    static let streamSeconds = 6.0
+    static let replaySeconds = 12.0
+
+    /// Returns `work`'s result, or throws `.timeout` after `seconds` without waiting for `work` to
+    /// notice: some network awaits don't respond to task cancellation, so `onTimeout` closes them.
+    private static func deadline<T: Sendable>(_ seconds: Double, onTimeout: @escaping @MainActor () -> Void,
+                                              _ work: @escaping @MainActor () async throws -> T) async throws -> T {
+        let once = DeadlineOnce()
+        return try await withCheckedThrowingContinuation { continuation in
+            let worker = Task { @MainActor in
+                do { let value = try await work(); if !once.done { once.done = true; continuation.resume(returning: value) } }
+                catch { if !once.done { once.done = true; continuation.resume(throwing: error) } }
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(seconds))
+                guard !once.done else { return }
+                once.done = true; worker.cancel(); onTimeout()
+                continuation.resume(throwing: GeminiError.timeout)
+            }
+        }
+    }
+
+    /// Opens a fresh copy of the app, then quits this one.
+    static func relaunch() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "sleep 0.5; /usr/bin/open -n \"$0\"", Bundle.main.bundlePath]
+        try? task.run()
+        NSApplication.shared.terminate(nil)
     }
 
     private func log(_ trial: Trial) {
@@ -426,6 +493,8 @@ private struct MenuContent: View {
         return now > host ? AVAudioTime.seconds(forHostTime: now - host) * 1000 : 0
     }
 }
+
+@MainActor private final class DeadlineOnce { var done = false }
 
 /// One press-to-release (or press-to-press) recording and its streaming session.
 @MainActor final class Dictation {

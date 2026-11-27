@@ -145,6 +145,11 @@ struct KeyEventRecord: Identifiable {
         return true
     }
 
+    /// The system disables a tap after a slow callback or user input; turn it back on if so.
+    func ensureEnabled() {
+        if let tap, !CGEvent.tapIsEnabled(tap: tap) { CGEvent.tapEnable(tap: tap, enable: true) }
+    }
+
     func record(_ done: @escaping (HotkeyBinding?) -> Void) { recorder = done; candidateModifier = nil; held = false }
     func cancelRecording() { recorder?(nil); recorder = nil }
 
@@ -185,7 +190,10 @@ struct KeyEventRecord: Identifiable {
         guard keyCode == binding.keyCode else { return false }
         switch type {
         case .keyDown:
-            if held { return true }   // auto-repeat while held
+            // Only true auto-repeat is ignored. A fresh press while `held` means the release was
+            // never delivered (secure input, a disabled tap, a sleep); treating it as a repeat
+            // would swallow the hotkey forever.
+            if event.getIntegerValueField(.keyboardEventAutorepeat) != 0 { return held }
             guard flags & HotkeyBinding.relevantModifiers == binding.modifiers else { return false }
             fire(true); return true
         case .keyUp:
